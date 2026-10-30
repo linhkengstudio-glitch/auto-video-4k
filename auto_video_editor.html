@@ -400,48 +400,48 @@
     <section class="lg:col-span-7 flex flex-col gap-4">
 
       <!-- BẢNG TRẠNG THÁI TIẾN TRÌNH DỰNG & XUẤT VIDEO (EDITING / EXPORTING STATUS MONITOR) -->
-      <div id="pipeline-status-card" class="glass-card rounded-2xl p-4 border-2 border-emerald-500/50 bg-slate-900/95 shadow-xl transition-all duration-300">
+      <div id="pipeline-status-card" class="glass-card rounded-2xl p-4 border border-slate-700/80 bg-slate-900/95 shadow-xl transition-all duration-300">
         <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
           <div class="flex items-center gap-2.5">
-            <span id="pipeline-status-dot" class="w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50"></span>
-            <h3 id="pipeline-status-title" class="text-sm font-extrabold tracking-wide text-emerald-300 uppercase">
-              ✅ TRẠNG THÁI: ĐÃ LẤY ĐỦ SUỘC &amp; EDIT XONG 100% (SẴN SÀNG XUẤT VIDEO)
+            <span id="pipeline-status-dot" class="w-3.5 h-3.5 rounded-full bg-slate-500"></span>
+            <h3 id="pipeline-status-title" class="text-sm font-extrabold tracking-wide text-slate-300 uppercase">
+              ⏸️ TRẠNG THÁI: CHƯA CHẠY — ĐANG CHỜ NẠP FILE WORD &amp; AUDIO
             </h3>
           </div>
           <div class="flex items-center gap-2">
-            <span id="pipeline-step-badge" class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-              Hoàn tất 4/4 bước • 100%
+            <span id="pipeline-step-badge" class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-slate-800 text-slate-400 border border-slate-700">
+              Chưa chạy • 0%
             </span>
           </div>
         </div>
 
         <!-- Thanh tiến trình phần trăm (0% -> 100%) -->
         <div class="w-full h-3.5 bg-slate-950 rounded-full overflow-hidden border border-slate-800 p-0.5 mb-2.5">
-          <div id="pipeline-progress-bar" class="h-full rounded-full bg-gradient-to-r from-sky-500 via-emerald-400 to-amber-400 transition-all duration-200" style="width: 100%"></div>
+          <div id="pipeline-progress-bar" class="h-full rounded-full bg-gradient-to-r from-sky-500 via-emerald-400 to-amber-400 transition-all duration-200" style="width: 0%"></div>
         </div>
 
         <!-- 4 Bước trạng thái trực quan -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] mb-2">
-          <div id="step-indicator-1" class="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 font-semibold flex items-center gap-1.5">
-            <span>✔</span> <span id="step-text-1">1. Đã lấy đủ suộc 4K</span>
+          <div id="step-indicator-1" class="p-2 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 font-medium flex items-center gap-1.5">
+            <span>⏳</span> <span id="step-text-1">1. Chờ lấy suộc 4K</span>
           </div>
-          <div id="step-indicator-2" class="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 font-semibold flex items-center gap-1.5">
-            <span>✔</span> <span id="step-text-2">2. Đã khớp Audio &amp; Sub</span>
+          <div id="step-indicator-2" class="p-2 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 font-medium flex items-center gap-1.5">
+            <span>⏳</span> <span id="step-text-2">2. Chờ khớp Audio &amp; Sub</span>
           </div>
-          <div id="step-indicator-3" class="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 font-semibold flex items-center gap-1.5">
-            <span>✔</span> <span id="step-text-3">3. Đã ghép Crossfade &amp; Nhạc</span>
+          <div id="step-indicator-3" class="p-2 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 font-medium flex items-center gap-1.5">
+            <span>⏳</span> <span id="step-text-3">3. Chờ ghép Crossfade &amp; Nhạc</span>
           </div>
-          <div id="step-indicator-4" class="p-2 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-200 font-semibold flex items-center gap-1.5">
-            <span>✔</span> <span id="step-text-4">4. Đã khóa chống trùng</span>
+          <div id="step-indicator-4" class="p-2 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 font-medium flex items-center gap-1.5">
+            <span>⏳</span> <span id="step-text-4">4. Chờ khóa chống trùng</span>
           </div>
         </div>
 
         <div class="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/80 text-xs">
-          <span id="pipeline-detail-msg" class="text-slate-300 font-medium">
-            Màn hình bên dưới đang phát bản <strong class="text-sky-300">Xem Trước (Preview)</strong> của video đã dựng xong. Bấm nút bên phải để lưu file về máy:
+          <span id="pipeline-detail-msg" class="text-slate-400 font-medium">
+            Hãy chọn <strong class="text-sky-300">File Word</strong>, <strong class="text-emerald-300">File Audio</strong>, <strong class="text-amber-300">Thư mục xuất</strong> ở cột trái rồi bấm nút <strong class="text-white">⚡ TỰ ĐỘNG DỰNG &amp; XUẤT VIDEO 4K (1-CLICK)</strong> để bắt đầu.
           </span>
           <div class="flex items-center gap-2">
-            <button id="btn-quick-save-all" type="button" class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-xs shadow-lg transition flex items-center gap-1.5">
+            <button id="btn-quick-save-all" type="button" class="hidden px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-extrabold text-xs shadow-lg transition flex items-center gap-1.5">
               <span>💾 Xuất Lại File Video Về Máy</span>
             </button>
           </div>
@@ -1533,6 +1533,62 @@
       // =========================================================================
 
       let editProgressTimer = null;
+      let hasCompletedCurrentEdit = false;
+      let hasUserProvidedFiles = false;
+
+      function setPipelineWaitingState(reasonText) {
+        hasCompletedCurrentEdit = false;
+        if (editProgressTimer) {
+          clearInterval(editProgressTimer);
+          editProgressTimer = null;
+        }
+        const card = document.getElementById("pipeline-status-card");
+        const dot = document.getElementById("pipeline-status-dot");
+        const title = document.getElementById("pipeline-status-title");
+        const badge = document.getElementById("pipeline-step-badge");
+        const bar = document.getElementById("pipeline-progress-bar");
+        const detail = document.getElementById("pipeline-detail-msg");
+        const btnSave = document.getElementById("btn-quick-save-all");
+        const waitCls = "p-2 rounded-lg bg-slate-950/70 border border-slate-800 text-slate-400 font-medium flex items-center gap-1.5";
+
+        if (card) card.className = "glass-card rounded-2xl p-4 border border-slate-700/80 bg-slate-900/95 shadow-xl transition-all duration-300";
+        if (dot) dot.className = hasUserProvidedFiles ? "w-3.5 h-3.5 rounded-full bg-sky-400 animate-pulse" : "w-3.5 h-3.5 rounded-full bg-slate-500";
+        if (title) {
+          title.className = hasUserProvidedFiles
+            ? "text-sm font-extrabold tracking-wide text-sky-300 uppercase"
+            : "text-sm font-extrabold tracking-wide text-slate-300 uppercase";
+          title.textContent = hasUserProvidedFiles
+            ? ("📂 ĐÃ NHẬN FILE ĐẦU VÀO — BẤM NÚT 'TỰ ĐỘNG DỰNG & XUẤT VIDEO 4K' ĐỂ BẮT ĐẦU EDIT!")
+            : "⏸️ TRẠNG THÁI: CHƯA CHẠY — ĐANG CHỜ NẠP FILE WORD & AUDIO";
+        }
+        if (badge) {
+          badge.className = hasUserProvidedFiles
+            ? "px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-sky-500/20 text-sky-300 border border-sky-500/40"
+            : "px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-slate-800 text-slate-400 border border-slate-700";
+          badge.textContent = hasUserProvidedFiles ? "Sẵn sàng chạy • 0%" : "Chưa chạy • 0%";
+        }
+        if (bar) bar.style.width = "0%";
+        if (btnSave) btnSave.classList.add("hidden");
+
+        const s1 = document.getElementById("step-indicator-1");
+        const s2 = document.getElementById("step-indicator-2");
+        const s3 = document.getElementById("step-indicator-3");
+        const s4 = document.getElementById("step-indicator-4");
+        const t1 = document.getElementById("step-text-1");
+        const t2 = document.getElementById("step-text-2");
+        const t3 = document.getElementById("step-text-3");
+        const t4 = document.getElementById("step-text-4");
+        if (s1) s1.className = waitCls; if (t1) t1.textContent = "⏳ 1. Chờ lấy suộc 4K";
+        if (s2) s2.className = waitCls; if (t2) t2.textContent = "⏳ 2. Chờ khớp Audio & Sub";
+        if (s3) s3.className = waitCls; if (t3) t3.textContent = "⏳ 3. Chờ ghép Crossfade & Nhạc";
+        if (s4) s4.className = waitCls; if (t4) t4.textContent = "⏳ 4. Chờ khóa chống trùng";
+
+        if (detail) {
+          detail.innerHTML = reasonText || (hasUserProvidedFiles
+            ? "Đã nhận cấu hình! Hãy bấm nút <strong class='text-sky-300'>⚡ TỰ ĐỘNG DỰNG &amp; XUẤT VIDEO 4K (1-CLICK)</strong> ở cột trái để bắt đầu đi lấy suộc và Edit."
+            : "Hãy chọn <strong class='text-sky-300'>File Word</strong>, <strong class='text-emerald-300'>File Audio</strong>, <strong class='text-amber-300'>Thư mục xuất</strong> ở cột trái rồi bấm nút <strong class='text-white'>⚡ TỰ ĐỘNG DỰNG &amp; XUẤT VIDEO 4K (1-CLICK)</strong> để bắt đầu.");
+        }
+      }
 
       function runAnimatedEditProgress(clipsCount, subsCount, langCode, totalDurSec, onComplete) {
         const card = document.getElementById("pipeline-status-card");
@@ -1606,6 +1662,9 @@
           } else {
             clearInterval(editProgressTimer);
             editProgressTimer = null;
+            hasCompletedCurrentEdit = true;
+            const btnSave = document.getElementById("btn-quick-save-all");
+            if (btnSave) btnSave.classList.remove("hidden");
             card.className = "glass-card rounded-2xl p-4 border-2 border-emerald-500/70 bg-slate-900/95 shadow-2xl transition-all duration-300";
             dot.className = "w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50";
             title.className = "text-sm font-extrabold tracking-wide text-emerald-300 uppercase";
@@ -1778,14 +1837,18 @@
         // Render clip cards in Timeline
         document.getElementById("clip-count-label").textContent = p.clips.length;
         if (!editProgressTimer) {
-          const t1 = document.getElementById("step-text-1");
-          const t2 = document.getElementById("step-text-2");
-          const t4 = document.getElementById("step-text-4");
-          const titleEl = document.getElementById("pipeline-status-title");
-          if (t1) t1.textContent = "1. Đã lấy đủ " + p.clips.length + " suộc 4K";
-          if (t2) t2.textContent = "2. Đã khớp " + p.subtitles.length + " câu Sub (" + String(p.finalLangCode || "EN").toUpperCase() + ")";
-          if (t4) t4.textContent = "4. Đã khóa chống trùng (" + Object.keys(systemMemory.usedClipIds).length + " suộc)";
-          if (titleEl) titleEl.textContent = "✅ TRẠNG THÁI: ĐÃ LẤY ĐỦ " + p.clips.length + " SUỘC & EDIT XONG 100% (ĐANG PHÁT XEM TRƯỚC BÊN DƯỚI)";
+          if (hasCompletedCurrentEdit) {
+            const t1 = document.getElementById("step-text-1");
+            const t2 = document.getElementById("step-text-2");
+            const t4 = document.getElementById("step-text-4");
+            const titleEl = document.getElementById("pipeline-status-title");
+            if (t1) t1.textContent = "✔ 1. Đã lấy đủ " + p.clips.length + " suộc 4K";
+            if (t2) t2.textContent = "✔ 2. Đã khớp " + p.subtitles.length + " câu Sub (" + String(p.finalLangCode || "EN").toUpperCase() + ")";
+            if (t4) t4.textContent = "✔ 4. Đã khóa chống trùng (" + Object.keys(systemMemory.usedClipIds).length + " suộc)";
+            if (titleEl) titleEl.textContent = "✅ TRẠNG THÁI: ĐÃ LẤY ĐỦ " + p.clips.length + " SUỘC & EDIT XONG 100% (ĐANG PHÁT XEM TRƯỚC BÊN DƯỚI)";
+          } else {
+            setPipelineWaitingState();
+          }
         }
         const clipsContainer = document.getElementById("timeline-clips-container");
 
@@ -2646,6 +2709,8 @@
       function handleWordFileUpload(e) {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
+        hasUserProvidedFiles = true;
+        hasCompletedCurrentEdit = false;
         document.getElementById("word-filename-display").textContent = file.name;
 
         const ext = file.name.split(".").pop().toLowerCase();
@@ -2681,6 +2746,8 @@
       function handleAudioFileUpload(e) {
         const file = e.target.files && e.target.files[0];
         if (!file) return;
+        hasUserProvidedFiles = true;
+        hasCompletedCurrentEdit = false;
 
         if (currentProject.uploadedAudioUrl) {
           URL.revokeObjectURL(currentProject.uploadedAudioUrl);
@@ -2892,8 +2959,8 @@
       // =========================================================================
       const OTA_STORAGE_KEY = "auto_video_studio_4k_ota_state_v1";
       let otaState = {
-        currentVersion: "v3.2.0",
-        latestRemoteVersion: "v3.2.0",
+        currentVersion: "v3.3.0",
+        latestRemoteVersion: "v3.3.0",
         pendingReleaseNotes: "Tối ưu tốc độ dựng Audio 60 phút & tự động đồng bộ bản quyền Storyblocks/Envato",
         manifestUrl: "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/version_manifest.json",
         autoUpdateOnStartup: true,
@@ -2913,10 +2980,10 @@
             const parsed = JSON.parse(raw);
             if (parsed && parsed.currentVersion) {
               otaState = Object.assign(otaState, parsed);
-              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v3.2.0)
-              otaState.currentVersion = "v3.2.0";
-              if (otaState.latestRemoteVersion < "v3.2.0") {
-                otaState.latestRemoteVersion = "v3.2.0";
+              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v3.3.0)
+              otaState.currentVersion = "v3.3.0";
+              if (otaState.latestRemoteVersion < "v3.3.0") {
+                otaState.latestRemoteVersion = "v3.3.0";
               }
             }
           }
@@ -3302,6 +3369,8 @@
 
 
         document.getElementById("btn-next-video-label").addEventListener("click", function () {
+          hasCompletedCurrentEdit = false;
+          hasUserProvidedFiles = false;
           const cur = document.getElementById("input-project-name").value.trim();
           const next = suggestNextVideoName(cur);
           document.getElementById("input-project-name").value = next;

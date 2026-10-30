@@ -19,7 +19,7 @@
   showintaskbar="yes"
   singleinstance="yes"
   sysmenu="yes"
-  version="3.2.0"
+  version="3.3.0"
   windowstate="normal"
 />
 <style>
@@ -127,7 +127,7 @@
       </div>
       <div>
         <div class="title-main">LK_AUTO_EDIT_<span>VIDEO</span></div>
-        <div class="subtitle">B&#7843;n v3.2.0 &bull; &#272;&#7891;ng b&#7897; GitHub T&#7913;c Th&#236; &amp; M&#7903; Kh&#243;a Ch&#7885;n Th&#432; M&#7909;c</div>
+        <div class="subtitle">B&#7843;n v3.3.0 &bull; &#272;&#7891;ng b&#7897; GitHub T&#7913;c Th&#236; &amp; M&#7903; Kh&#243;a Ch&#7885;n Th&#432; M&#7909;c</div>
       </div>
     </div>
 
@@ -151,7 +151,7 @@
     window.moveTo(Math.max(0, Math.floor((screen.availWidth - 560) / 2)), Math.max(0, Math.floor((screen.availHeight - 275) / 2)));
   } catch (e) {}
 
-  var BUNDLED_VERSION = "v3.2.0";
+  var BUNDLED_VERSION = "v3.3.0";
   var fso = new ActiveXObject("Scripting.FileSystemObject");
   var wsh = new ActiveXObject("WScript.Shell");
 
@@ -386,7 +386,7 @@
       var fileUri = "file:///" + htmlTarget.replace(/\\/g, "/") + "?v=" + (new Date().getTime());
       var profileDir = appDir + "\\AppProfile";
       var winArgs = " --user-data-dir=\"" + profileDir + "\""
-                  + " --unsafely-treat-insecure-origin-as-secure=\"file://\""
+                  + " --no-first-run --no-default-browser-check"
                   + " --allow-file-access-from-files"
                   + " --disk-cache-size=1"
                   + " --app=\"" + fileUri + "\""
@@ -421,7 +421,7 @@
     if (currentPct > 100) currentPct = 100;
 
     if (currentPct === 10) {
-      setProgress(10, "&#272;ang c&#7853;p nh&#7853;t nh&#226;n LK_Auto_Edit_Video (v3.2.0)...", "Kh&#7903;i t&#7841;o th&#432; m&#7909;c AppData\Local\LunKengAutoVideo4K");
+      setProgress(10, "&#272;ang c&#7853;p nh&#7853;t nh&#226;n LK_Auto_Edit_Video (v3.3.0)...", "Kh&#7903;i t&#7841;o th&#432; m&#7909;c AppData\Local\LunKengAutoVideo4K");
     } else if (currentPct === 24 && !didStep1) {
       didStep1 = true;
       step1_CopyLocalFiles();
@@ -440,7 +440,7 @@
 
     if (currentPct >= 100) {
       window.clearInterval(timer);
-      setProgress(100, "Ho&#224;n t&#7845;t 100%! &#272;ang m&#7903; LK_Auto_Edit_Video v3.2.0...", "Bi&#7875;u t&#432;&#7907;ng LK_Auto_Edit_Video &#273;&#227; s&#7861;n s&#224;ng ngo&#224;i m&#224;n h&#236;nh Desktop!");
+      setProgress(100, "Ho&#224;n t&#7845;t 100%! &#272;ang m&#7903; LK_Auto_Edit_Video v3.3.0...", "Bi&#7875;u t&#432;&#7907;ng LK_Auto_Edit_Video &#273;&#227; s&#7861;n s&#224;ng ngo&#224;i m&#224;n h&#236;nh Desktop!");
       window.setTimeout(function () {
         step4_LaunchStandaloneApp();
         window.setTimeout(function () {
