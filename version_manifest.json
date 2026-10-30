@@ -1,14 +1,14 @@
 {
   "app_name": "Lưn Keng Auto Video Studio 4K",
   "latest_version": "v2.5.0",
-  "released_at": "2026-10-30T17:08:00Z",
-  "release_notes": "Bản chính thức Lưn Keng Auto Video 4K - Đã khóa cứng kho GitHub linhkengstudio-glitch/auto-video-4k.",
+  "released_at": "2026-10-30T17:15:00Z",
+  "release_notes": "Tích hợp Logo độc quyền LK 4K Cinema Studio (Favicon, Header & File Icon Windows .ico).",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "a6bb68bcf88b43802bea57e7c2337b5acfd628e6688ed5806fd45009efd747ce"
+      "sha256": "39b4191564d90957899fa5f05c044d4f25ac8bd839a28036bdac3b73b579377b"
     },
     {
       "path": "auto_video_studio_4k.py",
