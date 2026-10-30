@@ -1,14 +1,14 @@
 {
   "app_name": "LK_Auto_Edit_Video",
-  "latest_version": "v3.1.0",
-  "released_at": "2026-10-30T18:39:30Z",
-  "release_notes": "Bản v3.1.0: Màn hình Preview phát trực tiếp luồng Video thật của từng suộc đã lấy (Dual-Buffer HTML5 Video), hỗ trợ nạp thư mục suộc .MP4 trên máy & nút Đổi Suộc Đang Phát.",
+  "latest_version": "v3.2.0",
+  "released_at": "2026-10-30T19:17:00Z",
+  "release_notes": "Bản v3.2.0: Mở khóa 100% hộp thoại Chọn Thư Mục Lưu Video trên Windows, sửa triệt để lỗi tự ghi đè file từ GitHub xuống ổ C (qua curl.exe + Commit SHA 0s cache), xem trước Font/Vị trí Sub trực tiếp và bỏ sạch nút thừa.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "1698e1e182ed5bc906667a7a4df9952696ae066ede6cb48365d28e0b10639ea4"
+      "sha256": "960729e84a3ca787191aef6042afb54e51b5d15db795dc9f16d3b0b29e74be14"
     },
     {
       "path": "Lun_Keng_4K_Logo.ico",
@@ -18,7 +18,7 @@
     {
       "path": "LK_Auto_Edit_Video.hta",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
-      "sha256": "6d5311196a0f242c5887eb99b23e6b0a2c292122c8003a105979e79737e39ca1"
+      "sha256": "1ff50437beeeac4bbf57c0e5b61db0211d3d2610112d62572983ad76aa4cf31c"
     }
   ]
 }

@@ -81,6 +81,7 @@
     <video id="real-clip-video-a" muted playsinline crossorigin="anonymous" preload="auto"></video>
     <video id="real-clip-video-b" muted playsinline crossorigin="anonymous" preload="auto"></video>
     <input id="input-local-video-clips" type="file" accept="video/*" multiple webkitdirectory class="hidden" />
+    <input id="input-fallback-output-dir" type="file" webkitdirectory directory multiple class="hidden" />
   </div>
 
   <!-- Top Header -->
@@ -2788,6 +2789,15 @@
             } catch (errDir) {
               savedDirectlyToFolder = false;
             }
+          } else if (window.__LK_SELECTED_FILE_HANDLE__) {
+            try {
+              const writable = await window.__LK_SELECTED_FILE_HANDLE__.createWritable();
+              await writable.write(blob);
+              await writable.close();
+              savedDirectlyToFolder = true;
+            } catch (errFile) {
+              savedDirectlyToFolder = false;
+            }
           }
 
           if (!savedDirectlyToFolder) {
@@ -2882,8 +2892,8 @@
       // =========================================================================
       const OTA_STORAGE_KEY = "auto_video_studio_4k_ota_state_v1";
       let otaState = {
-        currentVersion: "v3.1.0",
-        latestRemoteVersion: "v3.1.0",
+        currentVersion: "v3.2.0",
+        latestRemoteVersion: "v3.2.0",
         pendingReleaseNotes: "Tối ưu tốc độ dựng Audio 60 phút & tự động đồng bộ bản quyền Storyblocks/Envato",
         manifestUrl: "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/version_manifest.json",
         autoUpdateOnStartup: true,
@@ -2903,10 +2913,10 @@
             const parsed = JSON.parse(raw);
             if (parsed && parsed.currentVersion) {
               otaState = Object.assign(otaState, parsed);
-              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v3.1.0)
-              otaState.currentVersion = "v3.1.0";
-              if (otaState.latestRemoteVersion < "v3.1.0") {
-                otaState.latestRemoteVersion = "v3.1.0";
+              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v3.2.0)
+              otaState.currentVersion = "v3.2.0";
+              if (otaState.latestRemoteVersion < "v3.2.0") {
+                otaState.latestRemoteVersion = "v3.2.0";
               }
             }
           }
@@ -3037,8 +3047,18 @@
           return;
         }
         try {
-          const sep = otaState.manifestUrl.indexOf("?") === -1 ? "?" : "&";
-          const res = await fetch(otaState.manifestUrl + sep + "t=" + Date.now(), { cache: "no-store" });
+          let fetchUrl = otaState.manifestUrl + "?t=" + Date.now();
+          try {
+            const apiRes = await fetch("https://api.github.com/repos/linhkengstudio-glitch/auto-video-4k/commits/main?t=" + Date.now(), { cache: "no-store" });
+            if (apiRes.ok) {
+              const commitObj = await apiRes.json();
+              if (commitObj && commitObj.sha) {
+                window.__LK_LATEST_COMMIT_SHA__ = commitObj.sha;
+                fetchUrl = "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/" + commitObj.sha + "/version_manifest.json?t=" + Date.now();
+              }
+            }
+          } catch (eApi) {}
+          const res = await fetch(fetchUrl, { cache: "no-store" });
           if (!res.ok) return;
           const data = await res.json();
           if (data && data.latest_version) {
@@ -3080,7 +3100,9 @@
         wrap.classList.remove("hidden");
         let remoteHtmlText = null;
         try {
-          const rawHtmlUrl = otaState.manifestUrl.replace("version_manifest.json", "auto_video_editor.html");
+          const rawHtmlUrl = window.__LK_LATEST_COMMIT_SHA__
+            ? ("https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/" + window.__LK_LATEST_COMMIT_SHA__ + "/auto_video_editor.html")
+            : otaState.manifestUrl.replace("version_manifest.json", "auto_video_editor.html");
           const sep = rawHtmlUrl.indexOf("?") === -1 ? "?" : "&";
           const htmlRes = await fetch(rawHtmlUrl + sep + "t=" + Date.now(), { cache: "no-store" });
           if (htmlRes.ok) {
@@ -3159,15 +3181,26 @@
         document.getElementById("select-sub-lang").addEventListener("change", function () {
           runOneClickAutoPipeline(false);
         });
-        document.getElementById("select-sub-font").addEventListener("change", function () {
+        function previewSubtitleStyleChange() {
           runOneClickAutoPipeline(false);
-        });
-        document.getElementById("select-sub-position").addEventListener("change", function () {
-          runOneClickAutoPipeline(false);
-        });
-        document.getElementById("select-sub-color").addEventListener("change", function () {
-          runOneClickAutoPipeline(false);
-        });
+          if (currentProject.subtitles && currentProject.subtitles.length > 0) {
+            currentTime = currentProject.subtitles[0].startSec + 0.5;
+          } else {
+            currentTime = currentProject.introPause + 1.0;
+          }
+          const scrubEl = document.getElementById("timeline-scrubber");
+          if (scrubEl) scrubEl.value = currentTime.toFixed(1);
+          updateLiveSubPreviewBox();
+          renderCanvasFrame(currentTime);
+          if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(function () {
+              renderCanvasFrame(currentTime);
+            });
+          }
+        }
+        document.getElementById("select-sub-font").addEventListener("change", previewSubtitleStyleChange);
+        document.getElementById("select-sub-position").addEventListener("change", previewSubtitleStyleChange);
+        document.getElementById("select-sub-color").addEventListener("change", previewSubtitleStyleChange);
         document.getElementById("input-audio-duration").addEventListener("change", function () {
           runOneClickAutoPipeline(false);
         });
@@ -3190,25 +3223,56 @@
           renderCanvasFrame(currentTime);
         });
 
-        // Pick output folder button (uses File System Access API if available, else focuses path input)
+        // Pick output folder button: 3-layer native Windows Folder / File Picker so it ALWAYS opens a real Windows Explorer dialog!
+        const fallbackDirInput = document.getElementById("input-fallback-output-dir");
+        if (fallbackDirInput) {
+          fallbackDirInput.addEventListener("change", function (ev) {
+            const files = ev.target.files;
+            if (files && files.length > 0 && files[0].webkitRelativePath) {
+              const folderName = files[0].webkitRelativePath.split("/")[0];
+              document.getElementById("input-output-folder").value = folderName;
+              showToast("📁 Đã chọn thư mục lưu Video: " + folderName, "emerald");
+            }
+          });
+        }
+
         document.getElementById("btn-pick-folder").addEventListener("click", async function () {
+          // Lớp 1: Mở cửa sổ Chọn Thư Mục trực tiếp của Windows (File System Access API)
           if (typeof window.showDirectoryPicker === "function") {
             try {
               const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
               if (dirHandle && dirHandle.name) {
                 window.__LK_SELECTED_DIR_HANDLE__ = dirHandle;
                 document.getElementById("input-output-folder").value = dirHandle.name;
-                showToast("📁 Đã khóa thư mục đích: " + dirHandle.name + " (Edit xong sẽ tự động lưu thẳng Video vào thư mục này!)", "emerald");
+                showToast("📁 Đã chọn thư mục lưu Video: " + dirHandle.name + " (Edit xong sẽ tự động lưu thẳng Video vào đây!)", "emerald");
                 return;
               }
             } catch (err) {
-              // User cancelled or sandboxed iframe blocked native directory picker
+              if (err && err.name === "AbortError") return; // Người dùng bấm Cancel
             }
           }
-          const folderInput = document.getElementById("input-output-folder");
-          folderInput.focus();
-          folderInput.select();
-          showToast("📁 Nhập đường dẫn thư mục đích tại ô Thư Mục Xuất 4K (trình duyệt sẽ lưu file vào thư mục máy của bạn).", "sky");
+          // Lớp 2: Mở cửa sổ Chọn Nơi Lưu File Video trực tiếp của Windows (Save File Picker)
+          if (typeof window.showSaveFilePicker === "function") {
+            try {
+              const safeName = (currentProject.videoName || "Video_A").replace(/[^a-zA-Z0-9_-]/g, "_");
+              const fileHandle = await window.showSaveFilePicker({
+                suggestedName: safeName + "_4K_Video.webm",
+                types: [{ description: "4K Video File (.webm)", accept: { "video/webm": [".webm"] } }]
+              });
+              if (fileHandle) {
+                window.__LK_SELECTED_FILE_HANDLE__ = fileHandle;
+                document.getElementById("input-output-folder").value = "Đã chọn vị trí lưu: " + fileHandle.name;
+                showToast("📁 Đã khóa vị trí lưu file: " + fileHandle.name + " (Edit xong sẽ tự động ghi thẳng vào đây!)", "emerald");
+                return;
+              }
+            } catch (err2) {
+              if (err2 && err2.name === "AbortError") return;
+            }
+          }
+          // Lớp 3: Mở hộp thoại Chọn Thư Mục chuẩn HTML5 webkitdirectory
+          if (fallbackDirInput) {
+            fallbackDirInput.click();
+          }
         });
 
         // Master 1-Click Run Button (Commits used clips to System Memory Vault with visible 0%->100% step tracker!)

@@ -19,7 +19,7 @@
   showintaskbar="yes"
   singleinstance="yes"
   sysmenu="yes"
-  version="3.1.0"
+  version="3.2.0"
   windowstate="normal"
 />
 <style>
@@ -127,7 +127,7 @@
       </div>
       <div>
         <div class="title-main">LK_AUTO_EDIT_<span>VIDEO</span></div>
-        <div class="subtitle">L&#432;n Keng Auto Video 4K &bull; T&#7921; &#273;&#7897;ng c&#224;i Logo Desktop &amp; Full Screen</div>
+        <div class="subtitle">B&#7843;n v3.2.0 &bull; &#272;&#7891;ng b&#7897; GitHub T&#7913;c Th&#236; &amp; M&#7903; Kh&#243;a Ch&#7885;n Th&#432; M&#7909;c</div>
       </div>
     </div>
 
@@ -141,7 +141,7 @@
     </div>
 
     <div id="detail-label" class="footer-note">
-      H&#7879; th&#7889;ng t&#7921; &#273;&#7897;ng g&#7855;n Logo LK 4K ra m&#224;n h&#236;nh Desktop v&#224; m&#7903; Full M&#224;n H&#236;nh khi &#273;&#7841;t 100%
+      H&#7879; th&#7889;ng t&#7921; &#273;&#7897;ng c&#7853;p nh&#7853;t t&#7915; GitHub, g&#7855;n Logo LK v&#224; m&#7903; Full M&#224;n H&#236;nh khi &#273;&#7841;t 100%
     </div>
   </div>
 
@@ -151,7 +151,7 @@
     window.moveTo(Math.max(0, Math.floor((screen.availWidth - 560) / 2)), Math.max(0, Math.floor((screen.availHeight - 275) / 2)));
   } catch (e) {}
 
-  var BUNDLED_VERSION = "v3.1.0";
+  var BUNDLED_VERSION = "v3.2.0";
   var fso = new ActiveXObject("Scripting.FileSystemObject");
   var wsh = new ActiveXObject("WScript.Shell");
 
@@ -174,10 +174,11 @@
   var localAppData = wsh.ExpandEnvironmentStrings("%LOCALAPPDATA%");
   var appDir = localAppData + "\\LunKengAutoVideo4K";
   var htmlTarget = appDir + "\\auto_video_editor.html";
-  var icoTarget = appDir + "\\Lun_Keng_4K_Logo_v28.ico";
+  var icoTarget = appDir + "\\Lun_Keng_4K_Logo_v32.ico";
   var htaTarget = appDir + "\\LK_Auto_Edit_Video.hta";
   var verFile = appDir + "\\installed_version.txt";
-  var githubBase = "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main";
+  var githubRepo = "linhkengstudio-glitch/auto-video-4k";
+  var githubBase = "https://raw.githubusercontent.com/" + githubRepo + "/main";
 
   function parseVerArray(vStr) {
     var clean = String(vStr || "").replace(/[^0-9.]/g, "");
@@ -189,7 +190,7 @@
     return res;
   }
 
-  function isRemoteStrictlyNewer(remoteVer, localVer) {
+  function isRemoteNewerOrDifferent(remoteVer, localVer) {
     var a = parseVerArray(remoteVer);
     var b = parseVerArray(localVer);
     var len = Math.max(a.length, b.length);
@@ -222,17 +223,6 @@
         ["LK_Auto_Edit_Video.hta", htaTarget],
         ["Go_Cai_Dat_LK_Auto_Edit_Video.hta", appDir + "\\Go_Cai_Dat_LK_Auto_Edit_Video.hta"]
       ];
-      try {
-        var regKey = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LK_Auto_Edit_Video\\";
-        wsh.RegWrite(regKey + "DisplayName", "LK_Auto_Edit_Video (Lun Keng Auto Video 4K)", "REG_SZ");
-        wsh.RegWrite(regKey + "DisplayIcon", icoTarget + ",0", "REG_SZ");
-        wsh.RegWrite(regKey + "DisplayVersion", BUNDLED_VERSION, "REG_SZ");
-        wsh.RegWrite(regKey + "Publisher", "Lun Keng Studio", "REG_SZ");
-        wsh.RegWrite(regKey + "InstallLocation", appDir, "REG_SZ");
-        wsh.RegWrite(regKey + "UninstallString", "mshta.exe \"" + appDir + "\\Go_Cai_Dat_LK_Auto_Edit_Video.hta\"", "REG_SZ");
-        wsh.RegWrite(regKey + "NoModify", 1, "REG_DWORD");
-        wsh.RegWrite(regKey + "NoRepair", 1, "REG_DWORD");
-      } catch (eReg) {}
       var copiedFromBundle = false;
       for (var i = 0; i < filesToCopy.length; i++) {
         var sFile = srcDir + "\\" + filesToCopy[i][0];
@@ -249,28 +239,57 @@
         wf.Write(BUNDLED_VERSION);
         wf.Close();
       }
+      try {
+        var regKey = "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\LK_Auto_Edit_Video\\";
+        wsh.RegWrite(regKey + "DisplayName", "LK_Auto_Edit_Video (Lun Keng Auto Video 4K)", "REG_SZ");
+        wsh.RegWrite(regKey + "DisplayIcon", icoTarget + ",0", "REG_SZ");
+        wsh.RegWrite(regKey + "DisplayVersion", BUNDLED_VERSION, "REG_SZ");
+        wsh.RegWrite(regKey + "Publisher", "Lun Keng Studio", "REG_SZ");
+        wsh.RegWrite(regKey + "InstallLocation", appDir, "REG_SZ");
+        wsh.RegWrite(regKey + "UninstallString", "mshta.exe \"" + appDir + "\\Go_Cai_Dat_LK_Auto_Edit_Video.hta\"", "REG_SZ");
+        wsh.RegWrite(regKey + "NoModify", 1, "REG_DWORD");
+        wsh.RegWrite(regKey + "NoRepair", 1, "REG_DWORD");
+      } catch (eReg) {}
     } catch (e) {}
   }
 
-  function downloadBinaryFromUrl(url, destPath) {
+  // Tải file từ GitHub bằng curl.exe chuẩn của Windows 10/11 + fallback ADODB.Stream Text Mode (UTF-8) đảm bảo 100% ghi đè thành công xuống ổ C!
+  function downloadFileReliable(url, destPath, isTextUtf8) {
     try {
-      var xhr = new ActiveXObject("MSXML2.ServerXMLHTTP.6.0");
-      xhr.setTimeouts(2500, 2500, 4000, 5000);
-      xhr.open("GET", url + "?t=" + (new Date().getTime()), false);
-      xhr.send();
-      if (xhr.status === 200) {
-        var stream = new ActiveXObject("ADODB.Stream");
-        stream.Type = 1;
-        stream.Open();
-        stream.Write(xhr.responseBody);
-        if (stream.Size > 1000) {
-          stream.SaveToFile(destPath, 2);
+      var tmpPath = destPath + ".tmp_dl";
+      if (fso.FileExists(tmpPath)) {
+        try { fso.DeleteFile(tmpPath, true); } catch (e0) {}
+      }
+      // Cách 1: Dùng curl.exe có sẵn trong C:\Windows\System32\curl.exe (hỗ trợ cả file nhị phân .ico lẫn .html cực nhanh)
+      var cmd = "curl.exe -sL -H \"Cache-Control: no-cache\" \"" + url + "?t=" + (new Date().getTime()) + "\" -o \"" + tmpPath + "\"";
+      wsh.Run(cmd, 0, true);
+      if (fso.FileExists(tmpPath) && fso.GetFile(tmpPath).Size > 1000) {
+        fso.CopyFile(tmpPath, destPath, true);
+        try { fso.DeleteFile(tmpPath, true); } catch (e1) {}
+        return true;
+      }
+    } catch (eCurl) {}
+
+    // Cách 2: Nếu là file văn bản (.html / .hta), dùng ADODB.Stream ở chế độ Text UTF-8 (Type = 2) không bao giờ bị lỗi SafeArray trong JScript!
+    if (isTextUtf8) {
+      try {
+        var xhr = new ActiveXObject("MSXML2.ServerXMLHTTP.6.0");
+        xhr.setTimeouts(2500, 2500, 4000, 6000);
+        xhr.open("GET", url + "?t=" + (new Date().getTime()), false);
+        xhr.setRequestHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        xhr.send();
+        if (xhr.status === 200 && xhr.responseText && xhr.responseText.length > 1000) {
+          var stream = new ActiveXObject("ADODB.Stream");
+          stream.Type = 2; // adTypeText
+          stream.Charset = "utf-8";
+          stream.Open();
+          stream.WriteText(xhr.responseText);
+          stream.SaveToFile(destPath, 2); // adSaveCreateOverWrite
           stream.Close();
           return true;
         }
-        stream.Close();
-      }
-    } catch (e) {}
+      } catch (eText) {}
+    }
     return false;
   }
 
@@ -282,22 +301,43 @@
         localVer = tf.ReadAll();
         tf.Close();
       }
+
+      // Lấy mã commit SHA mới nhất từ GitHub API để vượt qua toàn bộ bộ nhớ đệm 5 phút của raw.githubusercontent.com
+      var rawBaseToUse = githubBase;
+      try {
+        var apiXhr = new ActiveXObject("MSXML2.ServerXMLHTTP.6.0");
+        apiXhr.setTimeouts(1500, 1500, 2500, 2500);
+        apiXhr.open("GET", "https://api.github.com/repos/" + githubRepo + "/commits/main?t=" + (new Date().getTime()), false);
+        apiXhr.setRequestHeader("User-Agent", "LKAutoEditVideo/3.2");
+        apiXhr.send();
+        if (apiXhr.status === 200 && apiXhr.responseText) {
+          var shaMatch = apiXhr.responseText.match(/"sha"\s*:\s*"([0-9a-f]{40})"/i);
+          if (shaMatch && shaMatch[1]) {
+            rawBaseToUse = "https://raw.githubusercontent.com/" + githubRepo + "/" + shaMatch[1];
+          }
+        }
+      } catch (eSha) {}
+
       var xhr = new ActiveXObject("MSXML2.ServerXMLHTTP.6.0");
       xhr.setTimeouts(2000, 2000, 3000, 3000);
-      xhr.open("GET", githubBase + "/version_manifest.json?t=" + (new Date().getTime()), false);
+      xhr.open("GET", rawBaseToUse + "/version_manifest.json?t=" + (new Date().getTime()), false);
+      xhr.setRequestHeader("Cache-Control", "no-cache");
       xhr.send();
       if (xhr.status === 200 && xhr.responseText) {
         var verMatch = xhr.responseText.match(/"latest_version"\s*:\s*"([^"]+)"/);
         var remoteVer = verMatch ? verMatch[1] : BUNDLED_VERSION;
-        if (isRemoteStrictlyNewer(remoteVer, localVer)) {
-          downloadBinaryFromUrl(githubBase + "/auto_video_editor.html", htmlTarget);
+        if (isRemoteNewerOrDifferent(remoteVer, localVer)) {
+          var okHtml = downloadFileReliable(rawBaseToUse + "/auto_video_editor.html", htmlTarget, true);
           var newVersionedIco = appDir + "\\Lun_Keng_4K_Logo_" + remoteVer.replace(/[^a-zA-Z0-9]/g, "") + ".ico";
-          if (downloadBinaryFromUrl(githubBase + "/Lun_Keng_4K_Logo.ico", newVersionedIco)) {
+          if (downloadFileReliable(rawBaseToUse + "/Lun_Keng_4K_Logo.ico", newVersionedIco, false)) {
             icoTarget = newVersionedIco;
           }
-          var wf = fso.CreateTextFile(verFile, true);
-          wf.Write(remoteVer);
-          wf.Close();
+          downloadFileReliable(rawBaseToUse + "/LK_Auto_Edit_Video.hta", htaTarget, true);
+          if (okHtml) {
+            var wf = fso.CreateTextFile(verFile, true);
+            wf.Write(remoteVer);
+            wf.Close();
+          }
         }
       }
     } catch (e) {}
@@ -342,8 +382,16 @@
 
   function step4_LaunchStandaloneApp() {
     try {
-      var fileUri = "file:///" + htmlTarget.replace(/\\/g, "/");
-      var winArgs = " --app=\"" + fileUri + "\" --start-maximized --window-position=0,0 --window-size=" + screen.availWidth + "," + screen.availHeight;
+      // Thêm ?v=timestamp để trình duyệt không bao giờ đọc cache cũ, đồng thời cấp profile riêng & mở khóa chọn thư mục trên file:///
+      var fileUri = "file:///" + htmlTarget.replace(/\\/g, "/") + "?v=" + (new Date().getTime());
+      var profileDir = appDir + "\\AppProfile";
+      var winArgs = " --user-data-dir=\"" + profileDir + "\""
+                  + " --unsafely-treat-insecure-origin-as-secure=\"file://\""
+                  + " --allow-file-access-from-files"
+                  + " --disk-cache-size=1"
+                  + " --app=\"" + fileUri + "\""
+                  + " --start-maximized --window-position=0,0 --window-size=" + screen.availWidth + "," + screen.availHeight;
+
       var edgePaths = [
         wsh.ExpandEnvironmentStrings("%ProgramFiles(x86)%") + "\\Microsoft\\Edge\\Application\\msedge.exe",
         wsh.ExpandEnvironmentStrings("%ProgramFiles%") + "\\Microsoft\\Edge\\Application\\msedge.exe",
@@ -373,11 +421,11 @@
     if (currentPct > 100) currentPct = 100;
 
     if (currentPct === 10) {
-      setProgress(10, "&#272;ang c&#224;i &#273;&#7863;t LK_Auto_Edit_Video (Full M&#224;n H&#236;nh 100%)...", "Kh&#7903;i t&#7841;o th&#432; m&#7909;c AppData\Local\LunKengAutoVideo4K");
+      setProgress(10, "&#272;ang c&#7853;p nh&#7853;t nh&#226;n LK_Auto_Edit_Video (v3.2.0)...", "Kh&#7903;i t&#7841;o th&#432; m&#7909;c AppData\Local\LunKengAutoVideo4K");
     } else if (currentPct === 24 && !didStep1) {
       didStep1 = true;
       step1_CopyLocalFiles();
-      setProgress(24, "&#272;ang ki&#7875;m tra b&#7843;n c&#7853;p nh&#7853;t m&#7899;i nh&#7845;t t&#7915; GitHub...", "Kho ch&#7913;a: linhkengstudio-glitch/auto-video-4k");
+      setProgress(24, "&#272;ang &#273;&#7891;ng b&#7897; tr&#7921;c ti&#7871;p b&#7843;n m&#7899;i nh&#7845;t t&#7915; GitHub (0s Cache)...", "Kho ch&#7913;a: linhkengstudio-glitch/auto-video-4k");
     } else if (currentPct === 54 && !didStep2) {
       didStep2 = true;
       step2_SyncFromGitHub();
@@ -385,14 +433,14 @@
     } else if (currentPct === 82 && !didStep3) {
       didStep3 = true;
       step3_CreateDesktopShortcutWithLogo();
-      setProgress(82, "&#272;&#227; t&#7841;o xong Logo LK ngo&#224;i Desktop! &#272;ang m&#7903; Full M&#224;n H&#236;nh...", "Kh&#7903;i &#273;&#7897;ng c&#7917;a s&#7893; &#273;&#7897;c l&#7853;p Full M&#224;n H&#236;nh (100%)");
+      setProgress(82, "&#272;&#227; m&#7903; kh&#243;a Ch&#7885;n Th&#432; M&#7909;c &amp; Live Font Preview! &#272;ang m&#7903; app...", "Kh&#7903;i &#273;&#7897;ng c&#7917;a s&#7893; &#273;&#7897;c l&#7853;p Full M&#224;n H&#236;nh (100%)");
     } else {
       setProgress(currentPct, null, null);
     }
 
     if (currentPct >= 100) {
       window.clearInterval(timer);
-      setProgress(100, "Ho&#224;n t&#7845;t 100%! &#272;ang m&#7903; LK_Auto_Edit_Video...", "Bi&#7875;u t&#432;&#7907;ng LK_Auto_Edit_Video &#273;&#227; s&#7861;n s&#224;ng ngo&#224;i m&#224;n h&#236;nh Desktop!");
+      setProgress(100, "Ho&#224;n t&#7845;t 100%! &#272;ang m&#7903; LK_Auto_Edit_Video v3.2.0...", "Bi&#7875;u t&#432;&#7907;ng LK_Auto_Edit_Video &#273;&#227; s&#7861;n s&#224;ng ngo&#224;i m&#224;n h&#236;nh Desktop!");
       window.setTimeout(function () {
         step4_LaunchStandaloneApp();
         window.setTimeout(function () {
