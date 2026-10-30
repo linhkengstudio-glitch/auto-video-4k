@@ -1,19 +1,24 @@
 {
-  "app_name": "Lưn Keng Auto Video Studio 4K",
-  "latest_version": "v2.6.0",
-  "released_at": "2026-10-30T17:34:00Z",
-  "release_notes": "Bản v2.6.0: Giao diện Full Màn Hình 100%, Logo LK 4K mới & Tự động tải thay thế toàn bộ giao diện trực tiếp từ GitHub.",
+  "app_name": "LK_Auto_Edit_Video",
+  "latest_version": "v3.1.0",
+  "released_at": "2026-10-30T18:39:30Z",
+  "release_notes": "Bản v3.1.0: Màn hình Preview phát trực tiếp luồng Video thật của từng suộc đã lấy (Dual-Buffer HTML5 Video), hỗ trợ nạp thư mục suộc .MP4 trên máy & nút Đổi Suộc Đang Phát.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "5b87b3f92d02fd3ade4e32267622df3cd9a260e60bb146ecb84e821b48f801bb"
+      "sha256": "1698e1e182ed5bc906667a7a4df9952696ae066ede6cb48365d28e0b10639ea4"
     },
     {
-      "path": "auto_video_studio_4k.py",
-      "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_studio_4k.py",
-      "sha256": "a8312eb5467504a35b6f47635c1dd723234d1c449e1b7e5824081652ec9c0a0e"
+      "path": "Lun_Keng_4K_Logo.ico",
+      "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/Lun_Keng_4K_Logo.ico",
+      "sha256": "d1b4a73202056f90f15db71f02f3a94e8a6f833cabc51e527081be541552d3f7"
+    },
+    {
+      "path": "LK_Auto_Edit_Video.hta",
+      "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
+      "sha256": "6d5311196a0f242c5887eb99b23e6b0a2c292122c8003a105979e79737e39ca1"
     }
   ]
 }
