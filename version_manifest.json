@@ -1,14 +1,14 @@
 {
   "app_name": "LK_Auto_Edit_Video",
-  "latest_version": "v3.3.0",
-  "released_at": "2026-10-30T19:27:30Z",
-  "release_notes": "Bản v3.3.0: Đưa trạng thái ban đầu về 0% (Chờ nạp File Word & Audio), xóa bỏ hoàn toàn thanh thông báo trắng trên đầu cửa sổ, giữ nguyên tính năng chọn thư mục & xem trước Font chữ.",
+  "latest_version": "v3.4.0",
+  "released_at": "2026-10-30T19:49:00Z",
+  "release_notes": "Bản v3.4.0: Sửa lỗi video xuất ra bị cắt 2 giây (ghi trọn vẹn thời lượng + giọng đọc Audio + nhạc nền), phát 100% suộc video quay cảnh thật (bỏ ảnh tĩnh giả), hộp thoại chọn thư mục gốc Windows không hỏi Allow/Don't Allow, và bỏ ô preview Sub thừa bên cột trái.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "b8ec845e8e051fde3d492883b249b03a398e7817c2a94f1fb8691f7e24ef1a1b"
+      "sha256": "58c3d62158ed455dd8e2dec9b4b2940bed0a2e9f27d7b85d002da0e381371b22"
     },
     {
       "path": "Lun_Keng_4K_Logo.ico",
@@ -18,7 +18,12 @@
     {
       "path": "LK_Auto_Edit_Video.hta",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
-      "sha256": "df27989985b60166a489e79c34728ce18f6517474ce6b2e830d5c0eef7fbb52f"
+      "sha256": "dd0746e554e4c415b26f0a44703f6738bb4831636a8e49e5aa9fc3f19cbeebcf"
+    },
+    {
+      "path": "lk_local_bridge.ps1",
+      "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/lk_local_bridge.ps1",
+      "sha256": "96417460f501719112a0bc2b0bcd1d91957035b87afb1dc836ee8977b09b4595"
     }
   ]
 }

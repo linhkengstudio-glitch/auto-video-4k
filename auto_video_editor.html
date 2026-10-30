@@ -338,18 +338,7 @@
             </div>
           </div>
 
-          <!-- Khung Xem Trước Trực Tiếp Font Chữ, Màu Sắc & Vị Trí Sub -->
-          <div class="mt-3 p-3 rounded-xl bg-slate-950/90 border border-sky-500/35">
-            <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
-              <span class="font-semibold text-sky-300">👁️ Xem trước trực tiếp Kiểu chữ &amp; Vị trí Sub:</span>
-              <span id="live-sub-meta-label" class="font-mono text-emerald-400">Font: Montserrat • Vị trí: Phía dưới (Bottom)</span>
-            </div>
-            <div id="live-sub-preview-stage" class="relative w-full h-20 rounded-lg bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 border border-slate-700/80 overflow-hidden flex items-end justify-center pb-2 px-3">
-              <div id="live-sub-preview-text" class="px-3 py-1 rounded-md bg-slate-950/85 border border-sky-400/30 text-sm font-bold text-white text-center shadow-lg transition-all duration-150" style="font-family: 'Montserrat', sans-serif; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.95);">
-                This is not a journey for the faint of heart.
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
 
@@ -2059,93 +2048,95 @@
 
 
       // =========================================================================
-      // KHO LUỒNG VIDEO .MP4 / .WEBM THẬT (PHÁT TRỰC TIẾP TRÊN MÀN HÌNH PREVIEW 4K)
-      // - Kết hợp các luồng Video thật chất lượng cao (CORS-enabled) + Tìm kiếm Video
-      //   trực tiếp theo Chủ đề qua API Wikimedia Commons + File .MP4 từ máy người dùng!
+      // KHO LUỒNG VIDEO .MP4 / .WEBM QUAY CẢNH THẬT 100% (PHÁT TRỰC TIẾP TRÊN MÀN HÌNH PREVIEW 4K)
+      // - Chỉ lấy các video quay cảnh thật (Time-lapse thiên nhiên, thác nước, rừng cây, sóng biển,
+      //   mây trời, phố đêm...) từ Wikimedia Commons CDN (ngắn, nhẹ, tải tức thì) + File .MP4 trên máy!
+      // - Tuyệt đối KHÔNG dùng 1 bức ảnh tĩnh làm chuyển động giả!
       // =========================================================================
       const REAL_VIDEO_STREAM_POOL = {
         nature: [
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.vp9.webm", offset: 4 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.vp9.webm", offset: 14 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.vp9.webm", offset: 25 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.vp9.webm", offset: 36 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.vp9.webm", offset: 48 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.vp9.webm", offset: 62 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.vp9.webm", offset: 78 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/c/c0/Big_Buck_Bunny_4K.webm/Big_Buck_Bunny_4K.webm.480p.vp9.webm", offset: 95 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f3/Spring_-_Blender_Open_Movie.webm/Spring_-_Blender_Open_Movie.webm.480p.vp9.webm", offset: 12 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f3/Spring_-_Blender_Open_Movie.webm/Spring_-_Blender_Open_Movie.webm.480p.vp9.webm", offset: 28 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f3/Spring_-_Blender_Open_Movie.webm/Spring_-_Blender_Open_Movie.webm.480p.vp9.webm", offset: 45 },
-          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/f/f3/Spring_-_Blender_Open_Movie.webm/Spring_-_Blender_Open_Movie.webm.480p.vp9.webm", offset: 68 }
+          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/60/Aerial_View_of_Forest_in_Autumn.webm/Aerial_View_of_Forest_in_Autumn.webm.480p.vp9.webm", offset: 0, title: "Aerial View of Forest in Autumn" },
+          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/9/96/Waterfall_in_the_forest.webm/Waterfall_in_the_forest.webm.480p.vp9.webm", offset: 0, title: "Waterfall in the Forest" },
+          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/1/1a/Clouds_time_lapse.webm/Clouds_time_lapse.webm.480p.vp9.webm", offset: 0, title: "Mountain Clouds Time-Lapse" },
+          { url: "https://upload.wikimedia.org/wikipedia/commons/transcoded/d/d3/Sunset_time_lapse.webm/Sunset_time_lapse.webm.480p.vp9.webm", offset: 0, title: "Golden Sunset Time-Lapse" }
         ]
       };
 
       const THEME_SEARCH_QUERIES = {
-        nature: "filetype:video aerial forest mountains waterfall nature landscape",
-        ocean: "filetype:video ocean waves beach sea coast underwater",
-        street: "filetype:video city night traffic street urban timelapse",
-        space: "filetype:video space galaxy earth stars nebula",
-        luxury: "filetype:video architecture modern luxury aerial building",
-        meditation: "filetype:video river sunset clouds calm nature",
-        ancient: "filetype:video castle temple heritage ancient history",
-        battle: "filetype:video fire storm dramatic clouds lightning",
-        scifi: "filetype:video technology futuristic cyber laser",
-        horror: "filetype:video fog dark forest night mist",
-        romance: "filetype:video sunset flowers autumn park",
-        history: "filetype:video historical monument museum world"
+        nature: 'filetype:video incategory:"Videos_of_nature" -bunny -blender -cartoon -animation',
+        ocean: 'filetype:video incategory:"Videos_of_waves" OR incategory:"Videos_of_seas" -cartoon',
+        street: 'filetype:video incategory:"Videos_of_traffic" OR incategory:"Time-lapse_videos_of_cities"',
+        space: 'filetype:video incategory:"Videos_of_astronomy" OR incategory:"Time-lapse_videos_of_the_night_sky"',
+        luxury: 'filetype:video incategory:"Aerial_videos_of_cities"',
+        meditation: 'filetype:video incategory:"Videos_of_waterfalls" OR incategory:"Videos_of_rivers"',
+        ancient: 'filetype:video incategory:"Videos_of_castles" OR incategory:"Videos_of_temples"',
+        battle: 'filetype:video incategory:"Videos_of_lightning" OR incategory:"Videos_of_storms"',
+        scifi: 'filetype:video incategory:"Videos_of_aurora" OR incategory:"Time-lapse_videos_of_lights"',
+        horror: 'filetype:video incategory:"Videos_of_fog" OR incategory:"Videos_of_clouds"',
+        romance: 'filetype:video incategory:"Videos_of_sunsets" OR incategory:"Videos_of_flowers"',
+        history: 'filetype:video incategory:"Aerial_videos_of_castles" OR incategory:"Videos_of_monuments"'
       };
 
       let liveFetchedThemeVideos = {};
       let localUserVideoPool = [];
+      let isBufferingRealVideos = false;
 
       async function fetchLiveVideosForTheme(themeKey) {
-        if (liveFetchedThemeVideos[themeKey] && liveFetchedThemeVideos[themeKey].length >= 6) {
+        if (liveFetchedThemeVideos[themeKey] && liveFetchedThemeVideos[themeKey].length >= 8) {
           return liveFetchedThemeVideos[themeKey];
         }
-        const q = encodeURIComponent(THEME_SEARCH_QUERIES[themeKey] || THEME_SEARCH_QUERIES.nature);
-        const apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=" + q + "&gsrlimit=25&prop=imageinfo&iiprop=url|derivatives&format=json&origin=*";
-        try {
-          const res = await fetch(apiUrl);
-          if (!res.ok) return [];
-          const data = await res.json();
-          if (!data || !data.query || !data.query.pages) return [];
-          const pages = Object.values(data.query.pages);
-          const urls = [];
-          pages.forEach(function (p) {
-            if (p.imageinfo && p.imageinfo[0]) {
-              const info = p.imageinfo[0];
-              let pickedUrl = null;
-              if (info.derivatives && Array.isArray(info.derivatives)) {
-                const good = info.derivatives.find(function (d) {
-                  return d.src && (d.src.indexOf("480p") !== -1 || d.src.indexOf("720p") !== -1) && d.src.indexOf(".webm") !== -1;
-                });
-                if (good) pickedUrl = good.src;
+        const queriesToTry = [
+          THEME_SEARCH_QUERIES[themeKey] || THEME_SEARCH_QUERIES.nature,
+          'filetype:video incategory:"Time-lapse_videos_of_nature"',
+          'filetype:video incategory:"Videos_of_waterfalls"'
+        ];
+        const collected = [];
+        for (let qIdx = 0; qIdx < queriesToTry.length; qIdx++) {
+          if (collected.length >= 16) break;
+          const q = encodeURIComponent(queriesToTry[qIdx]);
+          const apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=" + q + "&gsrlimit=30&prop=imageinfo&iiprop=url|size|derivatives&format=json&origin=*";
+          try {
+            const res = await fetch(apiUrl);
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (!data || !data.query || !data.query.pages) continue;
+            const pages = Object.values(data.query.pages);
+            pages.forEach(function (p) {
+              if (p.imageinfo && p.imageinfo[0]) {
+                const info = p.imageinfo[0];
+                let pickedUrl = null;
+                if (info.derivatives && Array.isArray(info.derivatives)) {
+                  // Ưu tiên bản 480p / 360p / 720p vp9.webm hoặc mp4 nhẹ để tải tức thì trong 0.5 giây!
+                  const fast = info.derivatives.find(function (d) {
+                    return d.src && (d.src.indexOf("480p.vp9.webm") !== -1 || d.src.indexOf("360p.vp9.webm") !== -1 || d.src.indexOf("720p.vp9.webm") !== -1);
+                  });
+                  if (fast) pickedUrl = fast.src;
+                }
+                if (!pickedUrl && info.url && (info.url.endsWith(".webm") || info.url.endsWith(".mp4")) && (!info.size || info.size < 25000000)) {
+                  pickedUrl = info.url;
+                }
+                if (pickedUrl && !collected.some(function (item) { return item.url === pickedUrl; })) {
+                  const cleanTitle = (p.title || "Real_4K_Clip").replace(/^File:/i, "").replace(/\.(webm|mp4|ogv)$/i, "");
+                  collected.push({ url: pickedUrl, offset: 0, title: cleanTitle });
+                  collected.push({ url: pickedUrl, offset: 6, title: cleanTitle + " (Góc 2)" });
+                }
               }
-              if (!pickedUrl && info.url && (info.url.endsWith(".webm") || info.url.endsWith(".mp4"))) {
-                pickedUrl = info.url;
-              }
-              if (pickedUrl) {
-                urls.push({ url: pickedUrl, offset: 2, title: (p.title || "").replace("File:", "") });
-                urls.push({ url: pickedUrl, offset: 10, title: (p.title || "").replace("File:", "") });
-              }
-            }
-          });
-          if (urls.length > 0) {
-            liveFetchedThemeVideos[themeKey] = urls;
-            if (currentProject && currentProject.themeKey === themeKey && currentProject.clips) {
-              assignRealVideoStreamsToClips(currentProject.clips, themeKey);
-              updateWorkspaceUI();
-              renderCanvasFrame(currentTime);
-            }
-          }
-          return urls;
-        } catch (e) {
-          return [];
+            });
+          } catch (e) {}
         }
+
+        if (collected.length > 0) {
+          liveFetchedThemeVideos[themeKey] = collected;
+          if (currentProject && currentProject.themeKey === themeKey && currentProject.clips) {
+            assignRealVideoStreamsToClips(currentProject.clips, themeKey);
+            updateWorkspaceUI();
+            renderCanvasFrame(currentTime);
+          }
+        }
+        return collected;
       }
 
       function assignRealVideoStreamsToClips(clips, themeKey) {
-        const basePool = REAL_VIDEO_STREAM_POOL.nature;
         const livePool = liveFetchedThemeVideos[themeKey] || [];
         const combinedPool = [];
 
@@ -2153,19 +2144,56 @@
           localUserVideoPool.forEach(function (v) { combinedPool.push(v); });
         }
         livePool.forEach(function (v) { combinedPool.push(v); });
-        basePool.forEach(function (v) { combinedPool.push(v); });
+        if (combinedPool.length === 0) {
+          REAL_VIDEO_STREAM_POOL.nature.forEach(function (v) { combinedPool.push(v); });
+        }
 
         clips.forEach(function (c, idx) {
           const item = combinedPool[idx % combinedPool.length];
           c.videoUrl = item.url;
           c.videoOffsetSec = (typeof item.offset === "number")
-            ? (item.offset + ((Math.floor(idx / combinedPool.length) * 9) % 45))
-            : ((idx * 8) % 40);
+            ? (item.offset + ((Math.floor(idx / combinedPool.length) * 5) % 15))
+            : 0;
           c.isLocalFile = !!item.isLocal;
-          if (item.title && item.isLocal) {
+          if (item.title) {
             c.title = item.title;
           }
         });
+      }
+
+      // Đợi luồng Video thật đầu tiên tải xong khung hình thực tế trước khi bắt đầu phát hoặc ghi hình!
+      async function ensureRealVideoReadyForPlayback(themeKey) {
+        isBufferingRealVideos = true;
+        renderCanvasFrame(currentTime);
+        await fetchLiveVideosForTheme(themeKey);
+        if (currentProject && currentProject.clips && currentProject.clips.length > 0) {
+          assignRealVideoStreamsToClips(currentProject.clips, themeKey);
+          const firstClip = currentProject.clips[0];
+          const vidA = document.getElementById("real-clip-video-a");
+          if (vidA && firstClip && firstClip.videoUrl) {
+            await new Promise(function (resolve) {
+              let done = false;
+              const finish = function () {
+                if (!done) {
+                  done = true;
+                  vidA.removeEventListener("loadeddata", finish);
+                  vidA.removeEventListener("canplay", finish);
+                  vidA.removeEventListener("error", finish);
+                  resolve();
+                }
+              };
+              vidA.addEventListener("loadeddata", finish);
+              vidA.addEventListener("canplay", finish);
+              vidA.addEventListener("error", finish);
+              vidA.setAttribute("data-clip-id", firstClip.id);
+              vidA.src = firstClip.videoUrl;
+              vidA.load();
+              setTimeout(finish, 4500);
+            });
+          }
+        }
+        isBufferingRealVideos = false;
+        renderCanvasFrame(currentTime);
       }
 
       function syncDualVideoPlayers(activeClip, nextClip, t, playingNow) {
@@ -2175,26 +2203,25 @@
 
         const targetUrlA = activeClip.videoUrl;
         const offsetInClip = Math.max(0, t - activeClip.startSec);
-        const desiredVideoTimeA = (activeClip.videoOffsetSec || 0) + offsetInClip;
+        const maxDurA = (vidA.duration && isFinite(vidA.duration) && vidA.duration > 2) ? vidA.duration : 60;
+        const desiredVideoTimeA = ((activeClip.videoOffsetSec || 0) + offsetInClip) % Math.max(2, maxDurA - 0.5);
 
         if (vidA.getAttribute("data-clip-id") !== activeClip.id) {
           vidA.setAttribute("data-clip-id", activeClip.id);
           if (vidA.src !== targetUrlA) {
             vidA.src = targetUrlA;
           }
-          try {
-            vidA.currentTime = desiredVideoTimeA;
-          } catch (e) {}
+          if (vidA.readyState >= 1) {
+            try { vidA.currentTime = desiredVideoTimeA; } catch (e) {}
+          }
         } else {
           const drift = Math.abs((vidA.currentTime || 0) - desiredVideoTimeA);
-          if (drift > 0.85 && vidA.readyState >= 1) {
-            try {
-              vidA.currentTime = desiredVideoTimeA;
-            } catch (e) {}
+          if (drift > 0.9 && vidA.readyState >= 1) {
+            try { vidA.currentTime = desiredVideoTimeA; } catch (e) {}
           }
         }
 
-        if (playingNow && vidA.paused) {
+        if (playingNow && vidA.paused && vidA.readyState >= 2) {
           vidA.play().catch(function () {});
         } else if (!playingNow && !vidA.paused) {
           vidA.pause();
@@ -2206,12 +2233,12 @@
             if (vidB.src !== nextClip.videoUrl) {
               vidB.src = nextClip.videoUrl;
             }
-            try {
-              vidB.currentTime = nextClip.videoOffsetSec || 0;
-            } catch (e) {}
+            if (vidB.readyState >= 1) {
+              try { vidB.currentTime = nextClip.videoOffsetSec || 0; } catch (e) {}
+            }
           }
           const timeLeft = activeClip.endSec - t;
-          if (playingNow && timeLeft <= 1.3 && vidB.paused) {
+          if (playingNow && timeLeft <= 1.3 && vidB.paused && vidB.readyState >= 2) {
             vidB.play().catch(function () {});
           } else if ((!playingNow || timeLeft > 1.3) && !vidB.paused) {
             vidB.pause();
@@ -2220,191 +2247,45 @@
       }
 
       function updateLiveSubPreviewBox() {
-        const stage = document.getElementById("live-sub-preview-stage");
-        const txtEl = document.getElementById("live-sub-preview-text");
-        const metaEl = document.getElementById("live-sub-meta-label");
-        if (!stage || !txtEl) return;
-
-        const font = document.getElementById("select-sub-font").value || "Montserrat";
-        const pos = document.getElementById("select-sub-position").value || "bottom";
-        const color = document.getElementById("select-sub-color").value || "#ffffff";
-
-        txtEl.style.fontFamily = "'" + font + "', sans-serif";
-        txtEl.style.color = color;
-        const firstSample = (currentProject && currentProject.subtitles && currentProject.subtitles[0])
-          ? currentProject.subtitles[0].textEn
-          : "This is not a journey for the faint of heart.";
-        txtEl.textContent = firstSample;
-
-        if (pos === "top") {
-          stage.className = "relative w-full h-20 rounded-lg bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 border border-slate-700/80 overflow-hidden flex items-start justify-center pt-2 px-3";
-        } else if (pos === "center") {
-          stage.className = "relative w-full h-20 rounded-lg bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 border border-slate-700/80 overflow-hidden flex items-center justify-center px-3";
-        } else {
-          stage.className = "relative w-full h-20 rounded-lg bg-gradient-to-b from-slate-900 via-slate-800 to-slate-950 border border-slate-700/80 overflow-hidden flex items-end justify-center pb-2 px-3";
-        }
-
-        const posLabel = pos === "top" ? "Trên cao (Top)" : (pos === "center" ? "Chính giữa (Center)" : "Phía dưới (Bottom)");
-        if (metaEl) {
-          metaEl.textContent = "Font: " + font + " • Vị trí: " + posLabel;
-        }
+        // Đã gộp trực tiếp lên màn hình Preview lớn bên phải theo yêu cầu người dùng (không tạo ô preview nhỏ bên trái gây rối)
       }
-
-      const SCENE_PALETTES = [
-        { name: "Bình Minh Rừng Sương", skyTop: "#0f172a", skyBot: "#f59e0b", hill1: "#064e3b", hill2: "#022c22", particle: "sunbeams", sunColor: "#fde047" },
-        { name: "Hồ Ngọc Bích & Thác Nước", skyTop: "#082f49", skyBot: "#38bdf8", hill1: "#0f766e", hill2: "#115e59", particle: "mist", sunColor: "#bae6fd" },
-        { name: "Đêm Cực Quang & Sao Băng", skyTop: "#020617", skyBot: "#312e81", hill1: "#0f172a", hill2: "#020617", particle: "stars", sunColor: "#34d399" },
-        { name: "Rừng Phong Đỏ Mùa Thu", skyTop: "#451a03", skyBot: "#fb923c", hill1: "#7c2d12", hill2: "#431407", particle: "leaves", sunColor: "#fed7aa" },
-        { name: "Bờ Biển Đại Dương Sóng Vỗ", skyTop: "#0c4a6e", skyBot: "#0284c7", hill1: "#0369a1", hill2: "#075985", particle: "waves", sunColor: "#e0f2fe" },
-        { name: "Thung Lũng Đom Đóm Đêm", skyTop: "#022c22", skyBot: "#065f46", hill1: "#064e3b", hill2: "#022c22", particle: "fireflies", sunColor: "#a7f3d0" },
-        { name: "Đỉnh Núi Tuyết & Mây Trôi", skyTop: "#1e293b", skyBot: "#94a3b8", hill1: "#334155", hill2: "#0f172a", particle: "snow", sunColor: "#f8fafc" },
-        { name: "Hoàng Hôn Đỏ Hẻm Núi", skyTop: "#31102f", skyBot: "#f43f5e", hill1: "#4c0519", hill2: "#1f030d", particle: "embers", sunColor: "#fda4af" },
-        { name: "Rừng Nhiệt Đới Mưa Nhẹ", skyTop: "#0f172a", skyBot: "#0d9488", hill1: "#134e4a", hill2: "#042f2e", particle: "rain", sunColor: "#5eead4" },
-        { name: "Ánh Đèn Bokeh Thành Phố Đêm", skyTop: "#090d16", skyBot: "#1e1b4b", hill1: "#1e293b", hill2: "#090d16", particle: "bokeh", sunColor: "#818cf8" }
-      ];
 
       function drawClipVisual(ctx, W, H, imgEl, clip, progress, alpha, realVideoEl) {
         ctx.save();
         ctx.globalAlpha = alpha;
 
-        // NẾU LUỒNG VIDEO THẬT ĐÃ SẴN SÀNG KHUNG HÌNH -> VẼ TRỰC TIẾP VIDEO THẬT CỦA SUỘC ĐÓ LÊN MÀN HÌNH PREVIEW!
+        // VẼ TRỰC TIẾP KHUNG HÌNH VIDEO THẬT CỦA SUỘC ĐÓ LÊN MÀN HÌNH PREVIEW & LUỒNG XUẤT VIDEO!
         if (realVideoEl && realVideoEl.readyState >= 2 && realVideoEl.videoWidth > 0) {
-          const zoom = 1.02 + progress * 0.04;
-          ctx.translate(W / 2, H / 2);
-          ctx.scale(zoom, zoom);
-          ctx.drawImage(realVideoEl, -W / 2, -H / 2, W, H);
+          ctx.drawImage(realVideoEl, 0, 0, W, H);
           ctx.restore();
 
           ctx.save();
           ctx.globalAlpha = alpha * 0.9;
-          ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
-          ctx.fillRect(W - 370, H - 42, 354, 28);
+          ctx.fillStyle = "rgba(7, 11, 20, 0.82)";
+          ctx.fillRect(W - 410, H - 42, 394, 28);
           ctx.fillStyle = "#4ade80";
           ctx.font = "bold 12px Inter, sans-serif";
           ctx.textAlign = "right";
-          ctx.fillText("🎥 VIDEO THẬT • Suộc #" + clip.index + " (" + clip.id + ") • " + clip.source, W - 24, H - 24);
+          const shortTitle = (clip.title || clip.id).substring(0, 28);
+          ctx.fillText("🎥 SUỘC VIDEO THẬT #" + clip.index + ": " + shortTitle + " • " + clip.source, W - 24, H - 24);
           ctx.restore();
           return;
         }
 
-        // Xoay vòng qua 3 ảnh nền khác nhau + 10 bối cảnh điện ảnh 4K + góc cắt/lật camera riêng cho từng suộc!
-        const allImgIds = ["preload-nature", "preload-ocean", "preload-street"];
-        const chosenImgId = allImgIds[(clip.index - 1) % allImgIds.length];
-        const variedImgEl = document.getElementById(chosenImgId) || imgEl;
-        const sceneIdx = (clip.index - 1) % SCENE_PALETTES.length;
-        const scene = SCENE_PALETTES[sceneIdx];
-
-        // 1. Nền bầu trời & ánh sáng riêng cho từng Suộc
-        const skyGrad = ctx.createLinearGradient(0, 0, 0, H);
-        skyGrad.addColorStop(0, scene.skyTop);
-        skyGrad.addColorStop(0.65, scene.skyBot);
-        skyGrad.addColorStop(1, scene.hill2);
-        ctx.fillStyle = skyGrad;
+        // Trong 0.5 giây đầu khi trình duyệt đang tải luồng Video .MP4/.WEBM thật từ máy chủ về bộ đệm:
+        // Hiện màn hình Studio đang nạp luồng Video thật (TUYỆT ĐỐI KHÔNG vẽ 1 bức ảnh tĩnh giả làm video!)
+        ctx.fillStyle = "#070b14";
         ctx.fillRect(0, 0, W, H);
-
-        // 2. Pha trộn ảnh thật với góc cắt (Crop Quadrant) và hướng chuyển động Camera khác nhau ở mỗi Suộc
-        if (variedImgEl && variedImgEl.complete && variedImgEl.naturalWidth > 0) {
-          ctx.save();
-          ctx.globalAlpha = alpha * 0.55;
-          const dirX = (clip.index % 2 === 0) ? 1 : -1;
-          const dirY = (clip.index % 3 === 0) ? 1 : -1;
-          const zoom = 1.08 + (clip.index % 4) * 0.06 + progress * 0.12;
-          const panX = dirX * (progress - 0.5) * 90;
-          const panY = dirY * (progress - 0.5) * 45;
-
-          ctx.translate(W / 2 + panX, H / 2 + panY);
-          if (clip.index % 2 === 1) {
-            ctx.scale(-zoom, zoom);
-          } else {
-            ctx.scale(zoom, zoom);
-          }
-
-          const iw = variedImgEl.naturalWidth;
-          const ih = variedImgEl.naturalHeight;
-          const cropFactor = 0.68 + ((clip.index % 3) * 0.09);
-          const sw = iw * cropFactor;
-          const sh = ih * cropFactor;
-          const sx = ((clip.index * 113) % Math.max(1, Math.floor(iw - sw)));
-          const sy = ((clip.index * 71) % Math.max(1, Math.floor(ih - sh)));
-
-          ctx.drawImage(variedImgEl, sx, sy, sw, sh, -W / 2, -H / 2, W, H);
-          ctx.restore();
-        }
-
-        // 3. Mặt trời / Mặt trăng / Luồng sáng Điện ảnh di chuyển theo từng Suộc
-        const orbX = W * (0.18 + ((clip.index * 0.23) % 0.64)) + (progress - 0.5) * 70;
-        const orbY = H * (0.20 + ((clip.index * 0.13) % 0.26)) - progress * 28;
-        const orbRad = 65 + (clip.index % 4) * 24;
-        const orbGrad = ctx.createRadialGradient(orbX, orbY, 5, orbX, orbY, orbRad * 2.5);
-        orbGrad.addColorStop(0, scene.sunColor);
-        orbGrad.addColorStop(0.35, scene.skyBot + "88");
-        orbGrad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = orbGrad;
-        ctx.beginPath();
-        ctx.arc(orbX, orbY, orbRad * 2.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // 4. Địa hình Núi / Đồi / Rừng / Sóng Nước đặc trưng riêng cho từng Suộc
-        const seed = clip.index * 17.73;
-        for (let layer = 0; layer < 2; layer++) {
-          ctx.beginPath();
-          const baseH = H * (layer === 0 ? 0.67 : 0.78);
-          ctx.moveTo(0, H);
-          for (let x = 0; x <= W; x += 32) {
-            const wave = Math.sin((x * 0.0045) + seed + layer * 2.3 + progress * (layer + 1) * 0.5) * (46 - layer * 15)
-                       + Math.cos((x * 0.012) - seed) * 20;
-            ctx.lineTo(x, baseH + wave);
-          }
-          ctx.lineTo(W, H);
-          ctx.closePath();
-          ctx.fillStyle = layer === 0 ? (scene.hill1 + "cc") : (scene.hill2 + "ee");
-          ctx.fill();
-        }
-
-        // 5. Hiệu ứng Hạt Chuyển Động Thời Thực (Mưa, Tuyết, Lá thu rơi, Đom đóm, Sao băng, Nắng chiếu, Bokeh)
-        const particleCount = 30;
-        for (let pIdx = 0; pIdx < particleCount; pIdx++) {
-          const pxBase = ((pIdx * 97 + clip.index * 31) % 100) / 100;
-          const pyBase = ((pIdx * 53 + clip.index * 17) % 100) / 100;
-
-          if (scene.particle === "rain") {
-            const rx = ((pxBase * W) + progress * 120) % W;
-            const ry = ((pyBase * H) + progress * 520) % H;
-            ctx.strokeStyle = "rgba(186, 230, 253, 0.5)";
-            ctx.lineWidth = 1.6;
-            ctx.beginPath();
-            ctx.moveTo(rx, ry);
-            ctx.lineTo(rx - 6, ry + 22);
-            ctx.stroke();
-          } else if (scene.particle === "snow" || scene.particle === "leaves") {
-            const sx = ((pxBase * W) + Math.sin(progress * 4 + pIdx) * 35 + progress * 60) % W;
-            const sy = ((pyBase * H) + progress * 220) % H;
-            ctx.fillStyle = scene.particle === "leaves" ? "rgba(251, 146, 60, 0.82)" : "rgba(255, 255, 255, 0.8)";
-            ctx.beginPath();
-            ctx.arc(sx, sy, scene.particle === "leaves" ? 4.8 : 3.2, 0, Math.PI * 2);
-            ctx.fill();
-          } else {
-            const bx = ((pxBase * W) + (progress - 0.5) * 85 + W) % W;
-            const by = ((pyBase * H) - progress * 75 + H) % H;
-            const r = (scene.particle === "bokeh") ? (9 + (pIdx % 4) * 5) : (2.4 + (pIdx % 3) * 1.5);
-            ctx.fillStyle = scene.sunColor;
-            ctx.globalAlpha = alpha * (0.28 + 0.45 * Math.abs(Math.sin(progress * 5 + pIdx)));
-            ctx.beginPath();
-            ctx.arc(bx, by, r, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-
-        // Nhãn Cảnh Quay 4K ở góc dưới bên phải
-        ctx.restore();
-        ctx.save();
-        ctx.globalAlpha = alpha * 0.85;
-        ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
-        ctx.fillRect(W - 350, H - 42, 334, 28);
+        ctx.strokeStyle = "rgba(56, 189, 248, 0.35)";
+        ctx.lineWidth = 2;
+        ctx.strokeRect(W / 2 - 250, H / 2 - 55, 500, 110);
         ctx.fillStyle = "#38bdf8";
-        ctx.font = "bold 12px Inter, sans-serif";
-        ctx.textAlign = "right";
-        ctx.fillText("Cảnh #" + clip.index + " (" + scene.name + ") • " + clip.id + " • " + clip.source, W - 24, H - 24);
+        ctx.font = "bold 18px Montserrat, Inter, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("⏳ ĐANG NẠP LUỒNG SUỘC VIDEO THẬT #" + clip.index + "...", W / 2, H / 2 - 12);
+        ctx.fillStyle = "#94a3b8";
+        ctx.font = "500 13px Inter, sans-serif";
+        ctx.fillText("Cảnh: " + (clip.title || clip.id) + " (" + clip.source + ")", W / 2, H / 2 + 20);
         ctx.restore();
       }
 
@@ -2434,7 +2315,6 @@
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Wrap text cleanly into max 2 lines
         const words = cue.textEn.split(" ");
         const lines = [];
         let currentLine = "";
@@ -2451,8 +2331,7 @@
         }
         if (currentLine) lines.push(currentLine);
 
-        // Determine Y coordinate from upfront user position choice
-        let baseY = H - 95; // bottom default
+        let baseY = H - 95;
         if (cue.position === "center") {
           baseY = H / 2;
         } else if (cue.position === "top") {
@@ -2463,7 +2342,6 @@
         const totalHeight = lines.length * lineHeight;
         const widest = lines.reduce(function (m, l) { return Math.max(m, ctx.measureText(l).width); }, 0);
 
-        // Draw translucent cinema box behind subtitle
         const padX = 28;
         const padY = 14;
         ctx.fillStyle = "rgba(7, 11, 20, 0.78)";
@@ -2480,7 +2358,6 @@
         ctx.lineWidth = 1.2;
         ctx.stroke();
 
-        // Draw subtitle text with crisp dark stroke
         lines.forEach(function (lineText, idx) {
           const y = baseY - ((lines.length - 1) * lineHeight) / 2 + idx * lineHeight;
           ctx.lineWidth = 5;
@@ -2816,57 +2693,140 @@
         showToast("⬇ Đã tải kịch bản dựng 4K (.SH) cho thư mục " + p.outputFolder, "sky");
       }
 
-      function exportWebmVideoRecording() {
+      let activeMediaRecorder = null;
+      let activeRenderCheckTimer = null;
+      let uploadedAudioMediaSource = null;
+      let exportStreamDest = null;
+
+      function stopAndSaveActiveRecordingNow() {
+        if (activeMediaRecorder && activeMediaRecorder.state === "recording") {
+          activeMediaRecorder.stop();
+        }
+      }
+
+      async function exportWebmVideoRecording() {
         const canvas = document.getElementById("video-canvas");
         if (!canvas || typeof canvas.captureStream !== "function" || typeof MediaRecorder === "undefined") {
           exportFfmpeg4KScript();
           return;
         }
+
+        // Nếu đang ghi dở thì dừng cũ trước
+        if (activeMediaRecorder && activeMediaRecorder.state === "recording") {
+          activeMediaRecorder.stop();
+          return;
+        }
+
         const titleEl = document.getElementById("pipeline-status-title");
         const badgeEl = document.getElementById("pipeline-step-badge");
         const barEl = document.getElementById("pipeline-progress-bar");
-        if (titleEl) titleEl.textContent = "🎥 ĐANG KẾT XUẤT (RENDER) FILE VIDEO VỀ MÁY TÍNH...";
-        if (badgeEl) badgeEl.textContent = "Đang xuất file...";
-        if (barEl) barEl.style.width = "40%";
-        showToast("🎥 Đang kết xuất file Video từ trình dựng 4K về máy của bạn...", "sky");
-        const stream = canvas.captureStream(30);
+        const detailEl = document.getElementById("pipeline-detail-msg");
+        const btnQuickSave = document.getElementById("btn-quick-save-all");
+
+        if (titleEl) titleEl.textContent = "⏳ ĐANG TẢI BỘ ĐỆM SUỘC VIDEO THẬT TRƯỚC KHI KẾT XUẤT (RENDER)...";
+        await ensureRealVideoReadyForPlayback(currentProject.themeKey);
+
+        // Đưa video về giây 0.0 để ghi trọn vẹn từ đầu tới cuối!
+        pausePreview();
+        currentTime = 0.0;
+        document.getElementById("timeline-scrubber").value = "0";
+        renderCanvasFrame(0.0);
+        startPreview();
+
+        // Ghép cả Luồng Hình Ảnh 4K Canvas + Luồng Âm Thanh (Giọng đọc Audio + Nhạc nền Auto-Ducking)
+        const canvasStream = canvas.captureStream(30);
+        const combinedTracks = [...canvasStream.getVideoTracks()];
+
+        try {
+          if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            audioCtx = new AudioContextClass();
+          }
+          if (!exportStreamDest) {
+            exportStreamDest = audioCtx.createMediaStreamDestination();
+          }
+          if (bgmGainNode) {
+            try { bgmGainNode.connect(exportStreamDest); } catch (eBgm) {}
+          }
+          if (uploadedAudioElement && !uploadedAudioMediaSource) {
+            try {
+              uploadedAudioMediaSource = audioCtx.createMediaElementSource(uploadedAudioElement);
+              uploadedAudioMediaSource.connect(audioCtx.destination);
+              uploadedAudioMediaSource.connect(exportStreamDest);
+            } catch (eAud) {}
+          }
+          const audioTracks = exportStreamDest.stream.getAudioTracks();
+          if (audioTracks.length > 0) {
+            combinedTracks.push(audioTracks[0]);
+          }
+        } catch (eMix) {}
+
+        const fullStream = new MediaStream(combinedTracks);
         const chunks = [];
         let recorder;
         try {
-          recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
-        } catch (err) {
-          recorder = new MediaRecorder(stream);
+          recorder = new MediaRecorder(fullStream, { mimeType: "video/webm;codecs=vp9,opus", videoBitsPerSecond: 8000000 });
+        } catch (err1) {
+          try {
+            recorder = new MediaRecorder(fullStream, { mimeType: "video/webm", videoBitsPerSecond: 6000000 });
+          } catch (err2) {
+            recorder = new MediaRecorder(fullStream);
+          }
         }
+
+        activeMediaRecorder = recorder;
         recorder.ondataavailable = function (e) {
           if (e.data && e.data.size > 0) chunks.push(e.data);
         };
+
+        if (btnQuickSave) {
+          btnQuickSave.classList.remove("hidden");
+          btnQuickSave.innerHTML = "<span>⏹ Dừng &amp; Lưu File Video Ngay</span>";
+        }
+
         recorder.onstop = async function () {
+          if (activeRenderCheckTimer) {
+            clearInterval(activeRenderCheckTimer);
+            activeRenderCheckTimer = null;
+          }
+          activeMediaRecorder = null;
+          if (btnQuickSave) {
+            btnQuickSave.innerHTML = "<span>💾 Xuất Lại File Video Về Máy</span>";
+          }
+
           const blob = new Blob(chunks, { type: "video/webm" });
           const safeName = currentProject.videoName.replace(/[^a-zA-Z0-9_-]/g, "_");
           const outFileName = safeName + "_4K_Video.webm";
+          const targetFolder = (document.getElementById("input-output-folder").value || "").trim();
           let savedDirectlyToFolder = false;
 
-          if (window.__LK_SELECTED_DIR_HANDLE__) {
+          // Ưu tiên 1: Ghi thẳng xuống ổ cứng qua cầu nối Windows Native Bridge (127.0.0.1:48915) — KHÔNG BAO GIỜ HỎI ALLOW/DON'T ALLOW!
+          try {
+            const bridgeUrl = "http://127.0.0.1:48915/save-video?folder=" + encodeURIComponent(targetFolder) + "&filename=" + encodeURIComponent(outFileName);
+            const saveRes = await fetch(bridgeUrl, {
+              method: "POST",
+              body: blob
+            });
+            if (saveRes.ok) {
+              const saveJson = await saveRes.json();
+              if (saveJson && saveJson.ok) {
+                savedDirectlyToFolder = true;
+              }
+            }
+          } catch (eBridgeSave) {}
+
+          // Ưu tiên 2: Nếu có handle thư mục đã chọn
+          if (!savedDirectlyToFolder && window.__LK_SELECTED_DIR_HANDLE__) {
             try {
               const fileHandle = await window.__LK_SELECTED_DIR_HANDLE__.getFileHandle(outFileName, { create: true });
               const writable = await fileHandle.createWritable();
               await writable.write(blob);
               await writable.close();
               savedDirectlyToFolder = true;
-            } catch (errDir) {
-              savedDirectlyToFolder = false;
-            }
-          } else if (window.__LK_SELECTED_FILE_HANDLE__) {
-            try {
-              const writable = await window.__LK_SELECTED_FILE_HANDLE__.createWritable();
-              await writable.write(blob);
-              await writable.close();
-              savedDirectlyToFolder = true;
-            } catch (errFile) {
-              savedDirectlyToFolder = false;
-            }
+            } catch (errDir) {}
           }
 
+          // Ưu tiên 3: Tải trực tiếp qua trình duyệt
           if (!savedDirectlyToFolder) {
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -2877,24 +2837,44 @@
             document.body.removeChild(a);
           }
 
-          const titleEl = document.getElementById("pipeline-status-title");
-          const badgeEl = document.getElementById("pipeline-step-badge");
-          const barEl = document.getElementById("pipeline-progress-bar");
-          const detailEl = document.getElementById("pipeline-detail-msg");
-          const folderName = document.getElementById("input-output-folder").value || "Downloads";
-          if (titleEl) titleEl.textContent = "✅ ĐÃ EDIT & TỰ ĐỘNG TẢI VIDEO (" + outFileName + ") VỀ MÁY XONG 100%!";
-          if (badgeEl) badgeEl.textContent = "Đã tự lưu Video • 100%";
+          if (titleEl) titleEl.textContent = "✅ ĐÃ KẾT XUẤT & LƯU FILE VIDEO (" + outFileName + ") VỀ MÁY XONG 100%!";
+          if (badgeEl) badgeEl.textContent = "Đã lưu Video • 100%";
           if (barEl) barEl.style.width = "100%";
           if (detailEl) {
-            detailEl.innerHTML = "🎉 <strong class='text-emerald-300'>ĐÃ TỰ ĐỘNG LƯU FILE VIDEO: " + escapeHtml(outFileName) + "</strong> vào thư mục <strong class='text-sky-300'>" + escapeHtml(folderName) + "</strong> (Không tải kèm file .SRT).";
+            detailEl.innerHTML = "🎉 <strong class='text-emerald-300'>ĐÃ TỰ ĐỘNG LƯU FILE VIDEO: " + escapeHtml(outFileName) + "</strong> vào thư mục <strong class='text-sky-300'>" + escapeHtml(targetFolder || "Downloads") + "</strong>.";
           }
-          showToast("✅ Đã tự động lưu file Video (" + outFileName + ") về máy!", "emerald");
+          showToast("✅ Đã lưu file Video (" + outFileName + ") về máy!", "emerald");
         };
-        if (!isPlaying) startPreview();
-        recorder.start();
-        setTimeout(function () {
-          if (recorder.state === "recording") recorder.stop();
-        }, 3200);
+
+        recorder.start(500);
+        const totalDur = Math.max(5, currentProject.totalDuration);
+
+        // Theo dõi tiến trình Kết xuất (Render) thực tế theo từng giây của Video (không cắt cụt ở 2 giây!)
+        activeRenderCheckTimer = setInterval(function () {
+          if (!activeMediaRecorder || activeMediaRecorder.state !== "recording") {
+            clearInterval(activeRenderCheckTimer);
+            activeRenderCheckTimer = null;
+            return;
+          }
+          const renderPct = Math.min(99, Math.max(1, Math.round((currentTime / totalDur) * 100)));
+          if (titleEl) {
+            titleEl.textContent = "🎥 ĐANG GHI & XUẤT VIDEO THẬT: " + formatTimeDetailed(currentTime) + " / " + formatTimeDetailed(totalDur) + " (" + renderPct + "%)";
+          }
+          if (badgeEl) {
+            badgeEl.textContent = "Đang Render • " + renderPct + "%";
+          }
+          if (barEl) {
+            barEl.style.width = renderPct + "%";
+          }
+          if (detailEl) {
+            detailEl.innerHTML = "Đang kết xuất suộc Video thật + Giọng đọc + Nhạc nền + Sub... Bạn có thể đợi chạy hết 100% hoặc bấm <strong class='text-emerald-300'>⏹ Dừng &amp; Lưu File Video Ngay</strong> ở góc phải để lấy ngay đoạn vừa ghi!";
+          }
+          if (currentTime >= totalDur - 0.15 || !isPlaying) {
+            if (activeMediaRecorder && activeMediaRecorder.state === "recording") {
+              activeMediaRecorder.stop();
+            }
+          }
+        }, 250);
       }
 
       // =========================================================================
@@ -2959,8 +2939,8 @@
       // =========================================================================
       const OTA_STORAGE_KEY = "auto_video_studio_4k_ota_state_v1";
       let otaState = {
-        currentVersion: "v3.3.0",
-        latestRemoteVersion: "v3.3.0",
+        currentVersion: "v3.4.0",
+        latestRemoteVersion: "v3.4.0",
         pendingReleaseNotes: "Tối ưu tốc độ dựng Audio 60 phút & tự động đồng bộ bản quyền Storyblocks/Envato",
         manifestUrl: "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/version_manifest.json",
         autoUpdateOnStartup: true,
@@ -2980,10 +2960,10 @@
             const parsed = JSON.parse(raw);
             if (parsed && parsed.currentVersion) {
               otaState = Object.assign(otaState, parsed);
-              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v3.3.0)
-              otaState.currentVersion = "v3.3.0";
-              if (otaState.latestRemoteVersion < "v3.3.0") {
-                otaState.latestRemoteVersion = "v3.3.0";
+              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v3.4.0)
+              otaState.currentVersion = "v3.4.0";
+              if (otaState.latestRemoteVersion < "v3.4.0") {
+                otaState.latestRemoteVersion = "v3.4.0";
               }
             }
           }
@@ -3304,42 +3284,29 @@
         }
 
         document.getElementById("btn-pick-folder").addEventListener("click", async function () {
-          // Lớp 1: Mở cửa sổ Chọn Thư Mục trực tiếp của Windows (File System Access API)
-          if (typeof window.showDirectoryPicker === "function") {
-            try {
-              const dirHandle = await window.showDirectoryPicker({ mode: "readwrite" });
-              if (dirHandle && dirHandle.name) {
-                window.__LK_SELECTED_DIR_HANDLE__ = dirHandle;
-                document.getElementById("input-output-folder").value = dirHandle.name;
-                showToast("📁 Đã chọn thư mục lưu Video: " + dirHandle.name + " (Edit xong sẽ tự động lưu thẳng Video vào đây!)", "emerald");
+          // Mở trực tiếp hộp thoại Chọn Thư Mục gốc của Windows (Shell.Application / FolderBrowserDialog) qua cầu nối Native 127.0.0.1:48915
+          // -> Hoàn toàn KHÔNG dùng showDirectoryPicker của trình duyệt nên KHÔNG BAO GIỜ hiện bảng hỏi Allow / Don't Allow!
+          try {
+            const bridgeRes = await fetch("http://127.0.0.1:48915/pick-folder?t=" + Date.now());
+            if (bridgeRes.ok) {
+              const bridgeData = await bridgeRes.json();
+              if (bridgeData && bridgeData.cancelled) {
                 return;
               }
-            } catch (err) {
-              if (err && err.name === "AbortError") return; // Người dùng bấm Cancel
-            }
-          }
-          // Lớp 2: Mở cửa sổ Chọn Nơi Lưu File Video trực tiếp của Windows (Save File Picker)
-          if (typeof window.showSaveFilePicker === "function") {
-            try {
-              const safeName = (currentProject.videoName || "Video_A").replace(/[^a-zA-Z0-9_-]/g, "_");
-              const fileHandle = await window.showSaveFilePicker({
-                suggestedName: safeName + "_4K_Video.webm",
-                types: [{ description: "4K Video File (.webm)", accept: { "video/webm": [".webm"] } }]
-              });
-              if (fileHandle) {
-                window.__LK_SELECTED_FILE_HANDLE__ = fileHandle;
-                document.getElementById("input-output-folder").value = "Đã chọn vị trí lưu: " + fileHandle.name;
-                showToast("📁 Đã khóa vị trí lưu file: " + fileHandle.name + " (Edit xong sẽ tự động ghi thẳng vào đây!)", "emerald");
+              if (bridgeData && bridgeData.path) {
+                window.__LK_NATIVE_FOLDER_PATH__ = bridgeData.path;
+                document.getElementById("input-output-folder").value = bridgeData.path;
+                showToast("📁 Đã chọn thư mục lưu Video: " + bridgeData.path, "emerald");
                 return;
               }
-            } catch (err2) {
-              if (err2 && err2.name === "AbortError") return;
             }
-          }
-          // Lớp 3: Mở hộp thoại Chọn Thư Mục chuẩn HTML5 webkitdirectory
-          if (fallbackDirInput) {
-            fallbackDirInput.click();
-          }
+          } catch (eNativeBridge) {}
+
+          // Dự phòng khi chạy trực tiếp trên trình duyệt web:
+          const folderInput = document.getElementById("input-output-folder");
+          folderInput.focus();
+          folderInput.select();
+          showToast("📁 Bạn có thể gõ trực tiếp đường dẫn thư mục (ví dụ E:\\Video_4K) vào ô Thư Mục Xuất 4K!", "sky");
         });
 
         // Master 1-Click Run Button (Commits used clips to System Memory Vault with visible 0%->100% step tracker!)
