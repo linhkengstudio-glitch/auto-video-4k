@@ -1,14 +1,14 @@
 {
   "app_name": "LK_Auto_Edit_Video",
-  "latest_version": "v4.0.0",
-  "released_at": "2026-10-31T09:53:00Z",
-  "release_notes": "Bản v4.0.0 (Final QA Verified): Sửa lỗi biến kích hoạt tải suộc trực tuyến trong runOneClickAutoPipeline, khởi động sẵn 6 kênh giải mã <video> thật từ giây 0, tự động cắt ghép Crossfade 1.2s tuân thủ 100% quy tắc chống trùng và xuất .MP4 hoàn chỉnh.",
+  "latest_version": "v4.4.0",
+  "released_at": "2026-10-31T12:35:00Z",
+  "release_notes": "Bản v4.4.0: Nâng giới hạn thời lượng Video nguồn từ 120 giây lên tối đa 30 phút (1.800 giây / ~264 đoạn suộc độc lập trên mỗi video nguồn), hỗ trợ cắt suộc xuyên suốt toàn bộ 30 phút của video nguồn.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "1d2ea1b06ce8153105bfef5c5224f857d3bf945f437a504b213db1457b809fac"
+      "sha256": "6bf18ab35182d537d70dd4fc84e354e4078c5581e9ea8b57e7728c45840b4555"
     },
     {
       "path": "Lun_Keng_4K_Logo.ico",
@@ -18,12 +18,12 @@
     {
       "path": "LK_Auto_Edit_Video.hta",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
-      "sha256": "41945de1aa3c77cf8187b926a03b941ff3c038949982366b0d3a9d8304b58a7d"
+      "sha256": "12239693a605b53eff26e9149e427be916114618df991f87cb9edf29d2906ebe"
     },
     {
       "path": "lk_local_bridge.ps1",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/lk_local_bridge.ps1",
-      "sha256": "1ea96fa94de845304707f3a2b8ffe5b216bcbc5c635f413e4a3cc6e82222313f"
+      "sha256": "6f6cd119ec57797120dca6f74542ce4dd1fbe57cd7de75367b46761e3dd2be83"
     }
   ]
 }

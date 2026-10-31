@@ -3,6 +3,16 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
+# Tu dong tat tien trinh lk_local_bridge cu dang chiem cong 48915 de luon chay ban moi nhat!
+try {
+    Get-NetTCPConnection -LocalPort 48915 -ErrorAction SilentlyContinue | ForEach-Object {
+        if ($_.OwningProcess -ne $PID -and $_.OwningProcess -gt 4) {
+            Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
+        }
+    }
+    Start-Sleep -Milliseconds 350
+} catch {}
+
 $listener = New-Object System.Net.HttpListener
 $listener.Prefixes.Add("http://localhost:48915/")
 try {
@@ -54,7 +64,7 @@ while ($listener.IsListening) {
         $path = $req.Url.AbsolutePath
 
         if ($path -eq "/ping") {
-            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"4.0.0"}')
+            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"4.4.0"}')
             $res.ContentType = "application/json; charset=utf-8"
             $res.OutputStream.Write($buf, 0, $buf.Length)
             $res.Close()
@@ -167,18 +177,18 @@ while ($listener.IsListening) {
             if ([string]::IsNullOrWhiteSpace($searchQuery)) { $searchQuery = $qMap["nature"] }
 
             $existing = Get-ChildItem -LiteralPath $cacheDir -File -Include *.webm,*.mp4 -ErrorAction SilentlyContinue
-            if ($null -eq $existing -or $existing.Count -lt 6) {
+            if ($null -eq $existing -or $existing.Count -lt 40) {
                 $encQ = [System.Uri]::EscapeDataString($searchQuery)
-                $apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=$encQ&gsrlimit=20&prop=imageinfo&iiprop=url|size|derivatives&format=json"
+                $apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=$encQ&gsrlimit=45&prop=imageinfo&iiprop=url|size|derivatives&format=json"
                 try {
                     $wc = New-Object System.Net.WebClient
-                    $wc.Headers.Add("User-Agent", "LunKengAutoVideo4K/4.0.0 (Windows NT 10.0; Win64; x64)")
+                    $wc.Headers.Add("User-Agent", "LunKengAutoVideo4K/4.4.0 (Windows NT 10.0; Win64; x64)")
                     $wc.Encoding = [System.Text.Encoding]::UTF8
                     $apiJson = $wc.DownloadString($apiUrl) | ConvertFrom-Json
                     if ($null -ne $apiJson.query -and $null -ne $apiJson.query.pages) {
                         $dlIdx = 1
                         foreach ($prop in $apiJson.query.pages.PSObject.Properties) {
-                            if ($dlIdx -gt 6) { break }
+                            if ($dlIdx -gt 40) { break }
                             $page = $prop.Value
                             if ($null -ne $page.imageinfo -and $page.imageinfo.Count -gt 0) {
                                 $info = $page.imageinfo[0]
@@ -191,14 +201,14 @@ while ($listener.IsListening) {
                                         }
                                     }
                                 }
-                                if ([string]::IsNullOrWhiteSpace($vidUrl) -and $info.url -and ($info.url -match "\.(webm|mp4)$") -and $info.size -lt 20000000) {
+                                if ([string]::IsNullOrWhiteSpace($vidUrl) -and $info.url -and ($info.url -match "\.(webm|mp4)$") -and $info.size -lt 600000000) {
                                     $vidUrl = $info.url
                                 }
                                 if (-not [string]::IsNullOrWhiteSpace($vidUrl)) {
                                     $ext = if ($vidUrl -match "\.mp4$") { ".mp4" } else { ".webm" }
                                     $outVid = Join-Path $cacheDir ("cam_clip_" + $dlIdx + $ext)
                                     if (-not (Test-Path -LiteralPath $outVid)) {
-                                        Start-Process -FilePath "curl.exe" -ArgumentList "-L -s -A `"LunKengAutoVideo4K/4.0.0`" --max-time 8 `"$vidUrl`" -o `"$outVid`"" -WindowStyle Hidden -Wait
+                                        Start-Process -FilePath "curl.exe" -ArgumentList "-L -s -A `"LunKengAutoVideo4K/4.4.0`" --max-time 8 `"$vidUrl`" -o `"$outVid`"" -WindowStyle Hidden -Wait
                                     }
                                     if ((Test-Path -LiteralPath $outVid) -and (Get-Item -LiteralPath $outVid).Length -gt 20000) {
                                         $dlIdx++
