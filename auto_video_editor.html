@@ -2239,7 +2239,7 @@
         // Cho phép Video nguồn dài tối đa lên tới 30 phút (1800 giây) và tối thiểu >= 8 giây
         if (info.duration && (info.duration < 8.0 || info.duration > 1800.0)) return "";
         if (Array.isArray(info.derivatives)) {
-          const preferred = ["720p.vp9.webm", "480p.vp9.webm", "360p.vp9.webm", "720p.webm", "480p.webm", "360p.webm", ".mp4"];
+          const preferred = ["480p.vp9.webm", "360p.vp9.webm", "720p.vp9.webm", "480p.webm", "360p.webm", "720p.webm", ".mp4"];
           for (let p = 0; p < preferred.length; p++) {
             const pat = preferred[p];
             for (let d = 0; d < info.derivatives.length; d++) {
@@ -2270,20 +2270,22 @@
           try {
             const apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=" +
               encodeURIComponent(q) +
-              "&gsrlimit=25&prop=imageinfo&iiprop=url|size|mime|derivatives|user|dimensions&format=json&origin=*";
+              "&gsrlimit=25&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json&origin=*";
             const res = await fetch(apiUrl);
             if (res.ok) {
               const data = await res.json();
               const pages = (data && data.query && data.query.pages) ? Object.values(data.query.pages) : [];
-              // Ưu tiên các video nguồn có thời lượng dài (duration >= 18s) để cắt được nhiều suộc chất lượng
+              // Ưu tiên các video nguồn có thời lượng dài (lên tới 30 phút = 1800s) để cắt được nhiều suộc ở các vị trí khác nhau
               pages.sort(function (a, b) {
-                const da = (a.imageinfo && a.imageinfo[0] && a.imageinfo[0].duration) ? a.imageinfo[0].duration : 20;
-                const db = (b.imageinfo && b.imageinfo[0] && b.imageinfo[0].duration) ? b.imageinfo[0].duration : 20;
+                const ia = (a.videoinfo && a.videoinfo[0]) ? a.videoinfo[0] : ((a.imageinfo && a.imageinfo[0]) ? a.imageinfo[0] : null);
+                const ib = (b.videoinfo && b.videoinfo[0]) ? b.videoinfo[0] : ((b.imageinfo && b.imageinfo[0]) ? b.imageinfo[0] : null);
+                const da = (ia && ia.duration) ? ia.duration : 20;
+                const db = (ib && ib.duration) ? ib.duration : 20;
                 return Math.min(1800, db) - Math.min(1800, da);
               });
               for (let i = 0; i < pages.length; i++) {
                 const pg = pages[i];
-                const info = (pg.imageinfo && pg.imageinfo[0]) ? pg.imageinfo[0] : null;
+                const info = (pg.videoinfo && pg.videoinfo[0]) ? pg.videoinfo[0] : ((pg.imageinfo && pg.imageinfo[0]) ? pg.imageinfo[0] : null);
                 const playUrl = pickPlayableVideoUrlFromImageInfo(info);
                 if (playUrl) {
                   const cleanTitle = String(pg.title || "").replace(/^File:/i, "").replace(/\.(webm|mp4|ogv|ogg)$/i, "");
@@ -2323,19 +2325,46 @@
         return interleaved;
       }
 
-      // Nạp 1 Video nguồn vào khe phần cứng #vid-pool-slotIdx và trả về thời lượng thực tế (duration) của video nguồn đó
+      let blobUrlCacheByRemoteUrl = {};
+
+      // Nạp 1 Video nguồn thật vào bộ nhớ RAM (Blob URL) và đưa vào khe giải mã #vid-pool-slotIdx để cắt nhiều đoạn suộc mượt tức thì!
       function loadSourceVideoIntoSlot(slotIdx, candidates, startCursor) {
         return new Promise(function (resolve) {
           const v = document.getElementById("vid-pool-" + slotIdx);
           if (!v || !candidates || candidates.length === 0) return resolve(null);
 
           let attempt = 0;
-          function tryNext() {
-            if (attempt >= Math.min(6, candidates.length)) {
+          async function tryNext() {
+            if (attempt >= Math.min(8, candidates.length)) {
               return resolve(null);
             }
             const cand = candidates[(startCursor + attempt) % candidates.length];
             attempt++;
+
+            let playSrc = cand.videoUrl;
+            // Tải luồng video transcode về bộ nhớ RAM (Blob) để tua (seek) cắt nhiều đoạn suộc trong 0ms và không bao giờ lỗi CORS trên file:///
+            if (playSrc.indexOf("http") === 0) {
+              if (blobUrlCacheByRemoteUrl[playSrc]) {
+                playSrc = blobUrlCacheByRemoteUrl[playSrc];
+              } else {
+                try {
+                  const ctrl = new AbortController();
+                  const fetchTimer = setTimeout(function () { ctrl.abort(); }, 12000);
+                  const resp = await fetch(playSrc, { signal: ctrl.signal });
+                  clearTimeout(fetchTimer);
+                  if (resp.ok) {
+                    const blob = await resp.blob();
+                    if (blob.size > 25000) {
+                      const bUrl = URL.createObjectURL(blob);
+                      blobUrlCacheByRemoteUrl[playSrc] = bUrl;
+                      playSrc = bUrl;
+                    }
+                  }
+                } catch (eFetchBlob) {
+                  // Nếu fetch Blob vượt thời gian thì thử phát trực tiếp qua luồng <video crossorigin="anonymous">
+                }
+              }
+            }
 
             let settled = false;
             const timer = setTimeout(function () {
@@ -2344,7 +2373,7 @@
                 cleanup();
                 tryNext();
               }
-            }, 6500);
+            }, 10000);
 
             function cleanup() {
               clearTimeout(timer);
@@ -2365,7 +2394,7 @@
                   slotIdx: slotIdx,
                   parentVideoId: cand.parentVideoId || ("SRC_SLOT_" + slotIdx),
                   title: cand.title || ("Video Nguồn #" + (slotIdx + 1)),
-                  videoUrl: cand.videoUrl,
+                  videoUrl: playSrc,
                   channel: cand.channel || ("Channel_" + slotIdx),
                   source: cand.source || "YouTube",
                   duration: realDur
@@ -2384,14 +2413,14 @@
             v.addEventListener("canplay", onReady);
             v.addEventListener("error", onErr);
 
-            if (cand.videoUrl.indexOf("blob:") === 0 || cand.videoUrl.indexOf("file:") === 0) {
+            if (playSrc.indexOf("blob:") === 0 || playSrc.indexOf("file:") === 0) {
               v.removeAttribute("crossorigin");
             } else {
               v.crossOrigin = "anonymous";
             }
             v.muted = true;
             v.loop = true;
-            v.src = cand.videoUrl;
+            v.src = playSrc;
             v.load();
           }
 
@@ -2477,7 +2506,7 @@
             }
           } catch (eB) {}
           const webSources = await searchThemeSourceVideos(themeKey);
-          candidateSources = bridgeSources.concat(webSources);
+          candidateSources = webSources.concat(bridgeSources);
         }
 
         if (candidateSources.length === 0) return false;
@@ -2677,7 +2706,8 @@
         ctx.save();
         ctx.globalAlpha = alpha;
 
-        // 1. VẼ TRỰC TIẾP KHUNG HÌNH NGUYÊN BẢN TỪ VIDEO NGUỒN THẬT (<video id="vid-pool-0..11">) ĐÃ CẮT SUỘC (KHÔNG ZOOM/UỐN ÉO ẢNH GIẢ!)
+        // CHỈ VẼ TRỰC TIẾP TỪ BỘ GIẢI MÃ VIDEO NGUỒN THẬT (<video id="vid-pool-0..11">) ĐÃ CẮT SUỘC!
+        // TUYỆT ĐỐI KHÔNG BAO GIỜ VẼ ẢNH TĨNH PAN/ZOOM GIẢ TẠO!
         if (!realVideoEl || realVideoEl.readyState < 2 || realVideoEl.videoWidth === 0) {
           for (let fIdx = 0; fIdx < 12; fIdx++) {
             const altVid = document.getElementById("vid-pool-" + ((clip.index + fIdx) % 12));
@@ -2687,6 +2717,7 @@
             }
           }
         }
+
         if (realVideoEl && realVideoEl.readyState >= 2 && realVideoEl.videoWidth > 0) {
           try {
             if (realVideoEl.paused) {
@@ -2702,84 +2733,36 @@
             ctx.drawImage(realVideoEl, dx, dy, dw, dh);
 
             if (!isExportCanvas) {
-              ctx.fillStyle = "rgba(15, 23, 42, 0.84)";
-              ctx.fillRect(W - 460, H - 42, 444, 28);
+              ctx.fillStyle = "rgba(15, 23, 42, 0.86)";
+              ctx.fillRect(W - 490, H - 42, 474, 28);
               ctx.fillStyle = "#4ade80";
               ctx.font = "bold 12px Inter, sans-serif";
               ctx.textAlign = "right";
               const cutEnd = ((clip.cutStartSec || 0) + clip.duration).toFixed(1);
-              ctx.fillText("🎬 Suộc #" + clip.index + " [Cắt " + (clip.cutStartSec || 0).toFixed(1) + "s-" + cutEnd + "s] • " + clip.id + " • " + clip.source, W - 24, H - 24);
+              ctx.fillText("🎬 Suộc Video Thật #" + clip.index + " [Cắt " + (clip.cutStartSec || 0).toFixed(1) + "s-" + cutEnd + "s] • " + clip.id, W - 24, H - 24);
             }
             ctx.restore();
             return;
           } catch (eVid) {}
         }
 
-        // 2. LUÔN VẼ CẢNH QUAY THẬT 100% ĐẦY ĐỦ MÀU SẮC TỪ BỘ 6 CẢNH QUAY QUANG HỌC 4K (KHÔNG BAO GIỜ VẼ MÀN HÌNH ĐEN!)
-        // Mỗi suộc (#1, #2, #3, #4, #5, #6...) dùng một cảnh quay thực tế khác hẳn nhau + góc cắt camera & chuyển động vật lý riêng!
-        const sceneIdx = (clip.index - 1) % ALL_SCENE_IMAGE_IDS.length;
-        const sceneImgEl = document.getElementById(ALL_SCENE_IMAGE_IDS[sceneIdx]) || imgEl;
-        const atmos = SCENE_ATMOS_PALETTES[sceneIdx];
-
-        if (sceneImgEl && sceneImgEl.complete && sceneImgEl.naturalWidth > 0) {
-          const iw = sceneImgEl.naturalWidth;
-          const ih = sceneImgEl.naturalHeight;
-
-          // Mỗi chu kỳ 6 suộc sẽ lấy một góc cắt (quadrant) & hướng dolly camera khác nhau để 500+ suộc luôn mới mẻ
-          const cycle = Math.floor((clip.index - 1) / ALL_SCENE_IMAGE_IDS.length);
-          const dirX = (clip.index % 2 === 0) ? 1 : -1;
-          const dirY = (clip.index % 3 === 0) ? 1 : -1;
-          const zoom = 1.06 + (cycle % 3) * 0.05 + progress * 0.11;
-          const panX = dirX * (progress - 0.5) * 76;
-          const panY = dirY * (progress - 0.5) * 38;
-
-          ctx.save();
-          ctx.translate(W / 2 + panX, H / 2 + panY);
-          if (cycle % 2 === 1) {
-            ctx.scale(-zoom, zoom);
-          } else {
-            ctx.scale(zoom, zoom);
-          }
-          ctx.drawImage(sceneImgEl, -W / 2, -H / 2, W, H);
-          ctx.restore();
-        } else {
-          // Bảo hiểm tuyệt đối nếu ảnh đang giải mã: vẽ bầu trời hoàng hôn rực rỡ (không bao giờ màu đen)
-          const g = ctx.createLinearGradient(0, 0, 0, H);
-          g.addColorStop(0, "#0284c7");
-          g.addColorStop(0.6, "#f59e0b");
-          g.addColorStop(1, "#064e3b");
-          ctx.fillStyle = g;
-          ctx.fillRect(0, 0, W, H);
-        }
-
-        // Lớp ánh sáng khí quyển & hiệu ứng chuyển động thời gian thực (Tia nắng, sương mù, sóng nước, lá thu, sao băng, bokeh)
-        ctx.fillStyle = atmos.tint;
+        // Khi đang chờ tải Video nguồn thật từ Internet (chưa bấm chạy hoặc đang tải), hiển thị màn hình trạng thái tải luồng Video thật (không vẽ ảnh tĩnh chuyển động!)
+        const bgGrad = ctx.createLinearGradient(0, 0, W, H);
+        bgGrad.addColorStop(0, "#090d16");
+        bgGrad.addColorStop(1, "#0f172a");
+        ctx.fillStyle = bgGrad;
         ctx.fillRect(0, 0, W, H);
 
-        const pCount = 26;
-        for (let i = 0; i < pCount; i++) {
-          const bx = (((i * 97 + clip.index * 29) % 100) / 100 * W + (progress - 0.5) * 90 + W) % W;
-          const by = (((i * 53 + clip.index * 17) % 100) / 100 * H + progress * (atmos.mode === "leaves" ? 160 : -65) + H) % H;
-          const rad = (atmos.mode === "bokeh") ? (7 + (i % 4) * 5) : (2.2 + (i % 3) * 1.4);
-          ctx.fillStyle = atmos.particleColor;
-          ctx.globalAlpha = alpha * (0.25 + 0.45 * Math.abs(Math.sin(progress * 5 + i)));
-          ctx.beginPath();
-          ctx.arc(bx, by, rad, 0, Math.PI * 2);
-          ctx.fill();
-        }
-
-        ctx.restore();
         if (!isExportCanvas) {
-          ctx.save();
-          ctx.globalAlpha = alpha * 0.85;
-          ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
-          ctx.fillRect(W - 390, H - 42, 374, 28);
-          ctx.fillStyle = "#4ade80";
-          ctx.font = "bold 12px Inter, sans-serif";
-          ctx.textAlign = "right";
-          ctx.fillText("🎬 Suộc #" + clip.index + " (" + atmos.name + ") • " + clip.id + " • " + clip.source, W - 24, H - 24);
-          ctx.restore();
+          ctx.fillStyle = "#38bdf8";
+          ctx.font = "bold 20px Inter, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("⏳ ĐANG TẢI & GIẢI MÃ VIDEO NGUỒN THẬT TỪ INTERNET VÀO BỘ NHỚ RAM...", W / 2, H / 2 - 12);
+          ctx.fillStyle = "#94a3b8";
+          ctx.font = "14px Inter, sans-serif";
+          ctx.fillText("Suộc #" + clip.index + " • Chủ đề: " + (currentProject ? currentProject.themeKey.toUpperCase() : "NATURE") + " • Chỉ xuất từ luồng Video quay thật (0% ảnh tĩnh)", W / 2, H / 2 + 18);
         }
+        ctx.restore();
       }
 
       function drawPauseWatermark(ctx, W, H, titleText, countdownText) {
@@ -3526,8 +3509,8 @@
       // =========================================================================
       const OTA_STORAGE_KEY = "auto_video_studio_4k_ota_state_v1";
       let otaState = {
-        currentVersion: "v4.4.0",
-        latestRemoteVersion: "v4.4.0",
+        currentVersion: "v4.5.0",
+        latestRemoteVersion: "v4.5.0",
         pendingReleaseNotes: "Tối ưu tốc độ dựng Audio 60 phút & tự động đồng bộ bản quyền Storyblocks/Envato",
         manifestUrl: "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/version_manifest.json",
         autoUpdateOnStartup: true,
@@ -3547,10 +3530,10 @@
             const parsed = JSON.parse(raw);
             if (parsed && parsed.currentVersion) {
               otaState = Object.assign(otaState, parsed);
-              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v4.4.0)
-              otaState.currentVersion = "v4.4.0";
-              if (otaState.latestRemoteVersion < "v4.4.0") {
-                otaState.latestRemoteVersion = "v4.4.0";
+              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v4.5.0)
+              otaState.currentVersion = "v4.5.0";
+              if (otaState.latestRemoteVersion < "v4.5.0") {
+                otaState.latestRemoteVersion = "v4.5.0";
               }
             }
           }
@@ -3938,14 +3921,20 @@
             title.textContent = "⏳ ĐANG TÌM, TẢI & CẮT CÁC SUỘC VIDEO THẬT TỪ NGUỒN (≤ 8 GIÂY/SUỘC)...";
           }
 
-          // CHỜ tải & cắt xong các luồng Video quay cảnh thật từ Internet vào 12 bộ giải mã #vid-pool-0..11 trước khi bắt đầu Render!
-          await fetchOnlineRealCameraVideosIntoPool(currentProject.themeKey, function (pct, msg) {
+          // CHỜ tải & cắt xong các luồng Video quay cảnh thật từ Internet vào bộ nhớ RAM (#vid-pool-0..11) trước khi bắt đầu Render!
+          const hasLoadedRealVideos = await fetchOnlineRealCameraVideosIntoPool(currentProject.themeKey, function (pct, msg) {
             if (bar) bar.style.width = pct + "%";
             if (badge) badge.textContent = "Tải Suộc Video Thật • " + pct + "%";
             if (title) title.textContent = "⏳ " + msg.toUpperCase();
             if (btnRunText) btnRunText.textContent = "⏳ " + msg;
-            if (detail) detail.innerHTML = "Đang tải luồng Video quay thật (.webm/.mp4), cắt đoạn ≤ 8s, lọc 100% chống trùng Bộ Nhớ Hệ Thống & khác kênh YouTube liền kề...";
+            if (detail) detail.innerHTML = "Đang tải luồng Video quay thật (.webm/.mp4) vào RAM, băm nhiều đoạn suộc ≤ 8s, đan xen chống trùng nguồn liền kề...";
           });
+
+          if (!hasLoadedRealVideos) {
+            if (btnRunText) btnRunText.textContent = "⚡ TỰ ĐỘNG DỰNG & XUẤT VIDEO 4K (1-CLICK)";
+            showToast("⚠️ Chưa tải được Video nguồn thật từ Internet. Vui lòng kiểm tra kết nối mạng hoặc bấm chọn Thư mục Video .MP4 trên máy!", "amber");
+            return;
+          }
 
           runAnimatedEditProgress(
             currentProject.clips.length,

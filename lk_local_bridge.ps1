@@ -64,7 +64,7 @@ while ($listener.IsListening) {
         $path = $req.Url.AbsolutePath
 
         if ($path -eq "/ping") {
-            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"4.4.0"}')
+            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"4.5.0"}')
             $res.ContentType = "application/json; charset=utf-8"
             $res.OutputStream.Write($buf, 0, $buf.Length)
             $res.Close()
@@ -155,16 +155,23 @@ while ($listener.IsListening) {
 
 
         if ($path -eq "/fetch-online-videos") {
-            $theme = [System.Uri]::UnescapeDataString(($req.QueryString["theme"] + "nature"))
-            $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\StockCache\$theme"
+            $theme = [System.Uri]::UnescapeDataString(($req.QueryString["theme"] + ""))
+            if ([string]::IsNullOrWhiteSpace($theme)) { $theme = "nature" }
+            $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\StockCache_v45\$theme"
             New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
 
+            # Xoa thu muc StockCache cu (v4.0-v4.4) bi loi file cat ngang do timeout 8s
+            $oldCacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\StockCache"
+            if (Test-Path -LiteralPath $oldCacheDir) {
+                Remove-Item -LiteralPath $oldCacheDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+
             $qMap = @{
-                "nature"     = "filetype:video forest waterfall nature -cartoon -animation"
-                "ocean"      = "filetype:video ocean waves beach sea -cartoon"
+                "nature"     = "filetype:video waterfall forest river nature"
+                "ocean"      = "filetype:video ocean waves beach sea"
                 "street"     = "filetype:video city traffic night street"
                 "space"      = "filetype:video night sky stars aurora"
-                "meditation" = "filetype:video river waterfall stream"
+                "meditation" = "filetype:video river waterfall stream calm"
                 "luxury"     = "filetype:video aerial city skyline"
                 "ancient"    = "filetype:video castle temple mountain"
                 "battle"     = "filetype:video storm lightning clouds"
@@ -176,58 +183,66 @@ while ($listener.IsListening) {
             $searchQuery = $qMap[$theme]
             if ([string]::IsNullOrWhiteSpace($searchQuery)) { $searchQuery = $qMap["nature"] }
 
+            $remoteUrls = @()
             $existing = Get-ChildItem -LiteralPath $cacheDir -File -Include *.webm,*.mp4 -ErrorAction SilentlyContinue
-            if ($null -eq $existing -or $existing.Count -lt 40) {
-                $encQ = [System.Uri]::EscapeDataString($searchQuery)
-                $apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=$encQ&gsrlimit=45&prop=imageinfo&iiprop=url|size|derivatives&format=json"
-                try {
-                    $wc = New-Object System.Net.WebClient
-                    $wc.Headers.Add("User-Agent", "LunKengAutoVideo4K/4.4.0 (Windows NT 10.0; Win64; x64)")
-                    $wc.Encoding = [System.Text.Encoding]::UTF8
-                    $apiJson = $wc.DownloadString($apiUrl) | ConvertFrom-Json
-                    if ($null -ne $apiJson.query -and $null -ne $apiJson.query.pages) {
-                        $dlIdx = 1
-                        foreach ($prop in $apiJson.query.pages.PSObject.Properties) {
-                            if ($dlIdx -gt 40) { break }
-                            $page = $prop.Value
-                            if ($null -ne $page.imageinfo -and $page.imageinfo.Count -gt 0) {
-                                $info = $page.imageinfo[0]
-                                $vidUrl = ""
-                                if ($null -ne $info.derivatives) {
-                                    foreach ($d in $info.derivatives) {
-                                        if ($d.src -and ($d.src -match "480p\.vp9\.webm" -or $d.src -match "360p\.vp9\.webm")) {
-                                            $vidUrl = $d.src
-                                            break
+            $encQ = [System.Uri]::EscapeDataString($searchQuery)
+            # BAT BUOC dung prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions de lay luong video transcode .vp9.webm!
+            $apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=$encQ&gsrlimit=35&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json"
+            try {
+                $wc = New-Object System.Net.WebClient
+                $wc.Headers.Add("User-Agent", "LunKengAutoVideo4K/4.5.0 (Windows NT 10.0; Win64; x64)")
+                $wc.Encoding = [System.Text.Encoding]::UTF8
+                $apiJson = $wc.DownloadString($apiUrl) | ConvertFrom-Json
+                if ($null -ne $apiJson.query -and $null -ne $apiJson.query.pages) {
+                    $dlIdx = 1
+                    foreach ($prop in $apiJson.query.pages.PSObject.Properties) {
+                        $page = $prop.Value
+                        $vInfoList = if ($null -ne $page.videoinfo) { $page.videoinfo } else { $page.imageinfo }
+                        if ($null -ne $vInfoList -and $vInfoList.Count -gt 0) {
+                            $info = $vInfoList[0]
+                            if ($info.duration -and ($info.duration -lt 8 -or $info.duration -gt 1800)) { continue }
+                            $vidUrl = ""
+                            if ($null -ne $info.derivatives) {
+                                foreach ($d in $info.derivatives) {
+                                    if ($d.src -and ($d.src -match "480p\.vp9\.webm" -or $d.src -match "360p\.vp9\.webm" -or $d.src -match "720p\.vp9\.webm" -or $d.src -match "480p\.webm")) {
+                                        $vidUrl = $d.src
+                                        break
+                                    }
+                                }
+                            }
+                            if ([string]::IsNullOrWhiteSpace($vidUrl) -and $info.url -and ($info.url -match "\.(webm|mp4)$") -and $info.size -lt 45000000) {
+                                $vidUrl = $info.url
+                            }
+                            if (-not [string]::IsNullOrWhiteSpace($vidUrl)) {
+                                if ($dlIdx -le 6 -and ($null -eq $existing -or $existing.Count -lt 6)) {
+                                    $ext = if ($vidUrl -match "\.mp4$") { ".mp4" } else { ".webm" }
+                                    $outVid = Join-Path $cacheDir ("source_v45_" + $dlIdx + $ext)
+                                    $tmpVid = $outVid + ".tmp"
+                                    if (-not (Test-Path -LiteralPath $outVid)) {
+                                        $proc = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s -A `"LunKengAutoVideo4K/4.5.0`" --max-time 20 `"$vidUrl`" -o `"$tmpVid`"" -WindowStyle Hidden -Wait -PassThru
+                                        if ($proc.ExitCode -eq 0 -and (Test-Path -LiteralPath $tmpVid) -and (Get-Item -LiteralPath $tmpVid).Length -gt 50000) {
+                                            Move-Item -LiteralPath $tmpVid -Destination $outVid -Force
+                                        } else {
+                                            Remove-Item -LiteralPath $tmpVid -Force -ErrorAction SilentlyContinue
                                         }
                                     }
-                                }
-                                if ([string]::IsNullOrWhiteSpace($vidUrl) -and $info.url -and ($info.url -match "\.(webm|mp4)$") -and $info.size -lt 600000000) {
-                                    $vidUrl = $info.url
-                                }
-                                if (-not [string]::IsNullOrWhiteSpace($vidUrl)) {
-                                    $ext = if ($vidUrl -match "\.mp4$") { ".mp4" } else { ".webm" }
-                                    $outVid = Join-Path $cacheDir ("cam_clip_" + $dlIdx + $ext)
-                                    if (-not (Test-Path -LiteralPath $outVid)) {
-                                        Start-Process -FilePath "curl.exe" -ArgumentList "-L -s -A `"LunKengAutoVideo4K/4.4.0`" --max-time 8 `"$vidUrl`" -o `"$outVid`"" -WindowStyle Hidden -Wait
-                                    }
-                                    if ((Test-Path -LiteralPath $outVid) -and (Get-Item -LiteralPath $outVid).Length -gt 20000) {
-                                        $dlIdx++
-                                    } else {
-                                        Remove-Item -LiteralPath $outVid -Force -ErrorAction SilentlyContinue
-                                    }
+                                    $dlIdx++
+                                } else {
+                                    $remoteUrls += ('"' + $vidUrl + '"')
                                 }
                             }
                         }
                     }
-                } catch {}
-            }
+                }
+            } catch {}
 
-            $cachedFiles = Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 20000 }
+            $cachedFiles = Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 50000 -and $_.Extension -ne ".tmp" }
             $urlsArr = @()
             foreach ($cf in $cachedFiles) {
                 $encPath = [System.Uri]::EscapeDataString($cf.FullName)
                 $urlsArr += ('"http://localhost:48915/stock-cache?path=' + $encPath + '"')
             }
+            $urlsArr += $remoteUrls
             $json = '{"ok":true,"urls":[' + ($urlsArr -join ',') + ']}'
             $buf = [System.Text.Encoding]::UTF8.GetBytes($json)
             $res.ContentType = "application/json; charset=utf-8"
