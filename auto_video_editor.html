@@ -2588,10 +2588,40 @@
           });
         } else {
           if (onStepProgress) {
-            onStepProgress(10, "Đang tìm các Video nguồn cùng chủ đề (" + themeKey.toUpperCase() + ")...");
+            onStepProgress(10, "Đang chạy nhân Cine-Fetch (yt-dlp YouTube & Envato) tải Video .MP4 thật (" + themeKey.toUpperCase() + ")...");
           }
-          const webSources = await searchThemeSourceVideos(themeKey);
-          candidateSources = webSources;
+          let bridgeSources = [];
+          try {
+            const ctrlB = new AbortController();
+            const timerB = setTimeout(function () { ctrlB.abort(); }, 42000);
+            const bRes = await fetch("http://localhost:48915/fetch-online-videos?theme=" + encodeURIComponent(themeKey) + "&t=" + Date.now(), { signal: ctrlB.signal });
+            clearTimeout(timerB);
+            if (bRes.ok) {
+              const bData = await bRes.json();
+              if (bData && bData.ok && Array.isArray(bData.urls) && bData.urls.length > 0) {
+                bridgeSources = bData.urls.map(function (u, idx) {
+                  const isEnvato = String(u).toLowerCase().indexOf("envato") !== -1;
+                  return {
+                    parentVideoId: "CINEFETCH_" + themeKey.toUpperCase() + "_" + (idx + 1),
+                    title: (isEnvato ? "Envato 4K Stock #" : "YouTube 4K B-Roll #") + (idx + 1),
+                    videoUrl: u,
+                    estDuration: 45.0,
+                    channel: (isEnvato ? "EnvatoAuthor_" : "YouTubeChannel_") + (idx + 1),
+                    source: isEnvato ? "Envato" : "YouTube"
+                  };
+                });
+              }
+            }
+          } catch (eBridge) {}
+
+          let webSources = [];
+          if (bridgeSources.length < 6) {
+            try {
+              webSources = await searchThemeSourceVideos(themeKey);
+            } catch (eWeb) {}
+          }
+          // Ưu tiên tuyệt đối các file Video .MP4 đã được nhân Cine-Fetch (yt-dlp / Envato) tải về ổ cứng máy tính (localhost:48915/stock-cache)!
+          candidateSources = bridgeSources.concat(webSources);
         }
 
         if (candidateSources.length === 0) return false;
@@ -3608,8 +3638,8 @@
       // =========================================================================
       const OTA_STORAGE_KEY = "auto_video_studio_4k_ota_state_v1";
       let otaState = {
-        currentVersion: "v4.9.0",
-        latestRemoteVersion: "v4.9.0",
+        currentVersion: "v5.0.0",
+        latestRemoteVersion: "v5.0.0",
         pendingReleaseNotes: "Tối ưu tốc độ dựng Audio 60 phút & tự động đồng bộ bản quyền Storyblocks/Envato",
         manifestUrl: "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/version_manifest.json",
         autoUpdateOnStartup: true,
@@ -3629,10 +3659,10 @@
             const parsed = JSON.parse(raw);
             if (parsed && parsed.currentVersion) {
               otaState = Object.assign(otaState, parsed);
-              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v4.9.0)
-              otaState.currentVersion = "v4.9.0";
-              if (otaState.latestRemoteVersion < "v4.9.0") {
-                otaState.latestRemoteVersion = "v4.9.0";
+              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v5.0.0)
+              otaState.currentVersion = "v5.0.0";
+              if (otaState.latestRemoteVersion < "v5.0.0") {
+                otaState.latestRemoteVersion = "v5.0.0";
               }
             }
           }
@@ -4031,7 +4061,11 @@
 
           if (!hasLoadedRealVideos) {
             if (btnRunText) btnRunText.textContent = "⚡ TỰ ĐỘNG DỰNG & XUẤT VIDEO 4K (1-CLICK)";
-            showToast("⚠️ Chưa tải được Video nguồn thật từ Internet. Vui lòng kiểm tra kết nối mạng hoặc bấm chọn Thư mục Video .MP4 trên máy!", "amber");
+            if (bar) bar.style.width = "0%";
+            if (badge) badge.textContent = "Chờ nguồn Video • 0%";
+            if (title) title.textContent = "⚠️ CHƯA TẢI ĐƯỢC VIDEO NGUỒN — HÃY CHỌN THƯ MỤC VIDEO (.MP4) HOẶC THỬ LẠI";
+            if (detail) detail.innerHTML = "Bạn có thể bấm nút <strong>+ Nạp Thư Mục Suộc .MP4 Trên Máy</strong> (ví dụ thư mục video của <strong>CineFetch_AI</strong>) hoặc bấm chạy lại để nhân <strong>yt-dlp / Envato</strong> tải tự động.";
+            showToast("⚠️ Chưa nạp được Video nguồn! Bạn có thể trỏ vào thư mục video của CineFetch_AI hoặc thử lại.", "amber");
             return;
           }
 

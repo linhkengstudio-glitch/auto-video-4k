@@ -95,7 +95,7 @@ while ($listener.IsListening) {
         }
 
         if ($path -eq "/ping") {
-            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"4.9.0"}')
+            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"5.0.0"}')
             $res.ContentType = "application/json; charset=utf-8"
             $res.OutputStream.Write($buf, 0, $buf.Length)
             $res.Close()
@@ -191,92 +191,111 @@ while ($listener.IsListening) {
         if ($path -eq "/fetch-online-videos") {
             $theme = [System.Uri]::UnescapeDataString(($req.QueryString["theme"] + ""))
             if ([string]::IsNullOrWhiteSpace($theme)) { $theme = "nature" }
-            $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\StockCache_v45\$theme"
+            $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\CineFetchCache_v50\$theme"
+            $binDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\bin"
             New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
+            New-Item -ItemType Directory -Path $binDir -Force | Out-Null
 
-            # Xoa thu muc StockCache cu (v4.0-v4.4) bi loi file cat ngang do timeout 8s
-            $oldCacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\StockCache"
-            if (Test-Path -LiteralPath $oldCacheDir) {
-                Remove-Item -LiteralPath $oldCacheDir -Recurse -Force -ErrorAction SilentlyContinue
+            $ytMap = @{
+                "nature"     = "4k forest waterfall river nature relaxation no copyright"
+                "ocean"      = "4k ocean waves beach sea aerial no copyright"
+                "street"     = "4k city night street traffic drone no copyright"
+                "space"      = "4k galaxy stars nebula aurora night sky no copyright"
+                "meditation" = "4k calm river zen waterfall meditation nature no copyright"
+                "luxury"     = "4k luxury skyline yacht aerial drone no copyright"
+                "ancient"    = "4k ancient temple mountain mist aerial no copyright"
+                "battle"     = "4k storm lightning dark clouds cinematic no copyright"
+                "scifi"      = "4k aurora borealis cyberpunk lights timelapse no copyright"
+                "horror"     = "4k dark spooky fog forest mist cinematic no copyright"
+                "romance"    = "4k golden sunset flowers clouds cinematic no copyright"
+                "history"    = "4k ancient castle monument aerial drone no copyright"
             }
-
-            $qMap = @{
-                "nature"     = "filetype:video waterfall forest river nature"
-                "ocean"      = "filetype:video ocean waves beach sea"
-                "street"     = "filetype:video city traffic night street"
-                "space"      = "filetype:video night sky stars aurora"
-                "meditation" = "filetype:video river waterfall stream calm"
-                "luxury"     = "filetype:video aerial city skyline"
-                "ancient"    = "filetype:video castle temple mountain"
-                "battle"     = "filetype:video storm lightning clouds"
-                "scifi"      = "filetype:video aurora lights timelapse"
-                "horror"     = "filetype:video fog mist dark forest"
-                "romance"    = "filetype:video sunset flowers clouds"
-                "history"    = "filetype:video monument castle aerial"
+            $envatoMap = @{
+                "nature"     = "forest+waterfall+nature"
+                "ocean"      = "ocean+waves+beach"
+                "street"     = "city+street+night"
+                "space"      = "stars+galaxy+nebula"
+                "meditation" = "zen+river+waterfall"
+                "luxury"     = "luxury+skyline+aerial"
+                "ancient"    = "ancient+temple+mountain"
+                "battle"     = "storm+lightning+clouds"
+                "scifi"      = "aurora+futuristic+lights"
+                "horror"     = "dark+fog+forest"
+                "romance"    = "sunset+clouds+flowers"
+                "history"    = "castle+monument+aerial"
             }
-            $searchQuery = $qMap[$theme]
-            if ([string]::IsNullOrWhiteSpace($searchQuery)) { $searchQuery = $qMap["nature"] }
+            $ytQuery = if ($ytMap[$theme]) { $ytMap[$theme] } else { $ytMap["nature"] }
+            $envatoSlug = if ($envatoMap[$theme]) { $envatoMap[$theme] } else { $envatoMap["nature"] }
 
-            $remoteUrls = @()
-            $existing = Get-ChildItem -LiteralPath $cacheDir -File -Include *.webm,*.mp4 -ErrorAction SilentlyContinue
-            $encQ = [System.Uri]::EscapeDataString($searchQuery)
-            # BAT BUOC dung prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions de lay luong video transcode .vp9.webm!
-            $apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=$encQ&gsrlimit=35&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json"
-            try {
-                $wc = New-Object System.Net.WebClient
-                $wc.Headers.Add("User-Agent", "LunKengAutoVideo4K/4.9.0 (Windows NT 10.0; Win64; x64)")
-                $wc.Encoding = [System.Text.Encoding]::UTF8
-                $apiJson = $wc.DownloadString($apiUrl) | ConvertFrom-Json
-                if ($null -ne $apiJson.query -and $null -ne $apiJson.query.pages) {
-                    $dlIdx = 1
-                    foreach ($prop in $apiJson.query.pages.PSObject.Properties) {
-                        $page = $prop.Value
-                        $vInfoList = if ($null -ne $page.videoinfo) { $page.videoinfo } else { $page.imageinfo }
-                        if ($null -ne $vInfoList -and $vInfoList.Count -gt 0) {
-                            $info = $vInfoList[0]
-                            if ($info.duration -and ($info.duration -lt 8 -or $info.duration -gt 1800)) { continue }
-                            $vidUrl = ""
-                            if ($null -ne $info.derivatives) {
-                                foreach ($d in $info.derivatives) {
-                                    if ($d.src -and ($d.src -match "480p\.vp9\.webm" -or $d.src -match "360p\.vp9\.webm" -or $d.src -match "720p\.vp9\.webm" -or $d.src -match "480p\.webm")) {
-                                        if ($d.src.StartsWith("//")) { $vidUrl = "https:" + $d.src } else { $vidUrl = $d.src }
-                                        break
+            $existing = Get-ChildItem -LiteralPath $cacheDir -File -Include *.mp4,*.webm -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 80000 }
+
+            # Buoc 1: Quet va tai tu Envato Elements Video Previews (.mp4 CDN truc tiep - giong het CineFetch_AI!)
+            if ($null -eq $existing -or $existing.Count -lt 6) {
+                try {
+                    $envUrl = "https://elements.envato.com/stock-video/$envatoSlug"
+                    $envHtml = & curl.exe -L -s -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0.0.0 Safari/537.36" --max-time 10 "$envUrl"
+                    if ($envHtml) {
+                        $matches = [regex]::Matches($envHtml, 'https://video-previews\.elements\.envatousercontent\.com/[^"''\s\<>]+\.mp4')
+                        $eIdx = 1
+                        $seenEnv = @{}
+                        foreach ($m in $matches) {
+                            if ($eIdx -gt 6) { break }
+                            $mp4Url = $m.Value
+                            if (-not $seenEnv.ContainsKey($mp4Url)) {
+                                $seenEnv[$mp4Url] = $true
+                                $outEnv = Join-Path $cacheDir ("envato_" + $theme + "_" + $eIdx + ".mp4")
+                                $tmpEnv = $outEnv + ".tmp"
+                                if (-not (Test-Path -LiteralPath $outEnv)) {
+                                    $pEnv = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s -A `"Mozilla/5.0`" --max-time 14 `"$mp4Url`" -o `"$tmpEnv`"" -WindowStyle Hidden -Wait -PassThru
+                                    if ($pEnv.ExitCode -eq 0 -and (Test-Path -LiteralPath $tmpEnv) -and (Get-Item -LiteralPath $tmpEnv).Length -gt 80000) {
+                                        Move-Item -LiteralPath $tmpEnv -Destination $outEnv -Force
+                                        $eIdx++
+                                    } else {
+                                        Remove-Item -LiteralPath $tmpEnv -Force -ErrorAction SilentlyContinue
                                     }
-                                }
-                            }
-                            if ([string]::IsNullOrWhiteSpace($vidUrl) -and $info.url -and ($info.url -match "\.(webm|mp4)$") -and $info.size -lt 45000000) {
-                                $vidUrl = $info.url
-                            }
-                            if (-not [string]::IsNullOrWhiteSpace($vidUrl)) {
-                                if ($dlIdx -le 6 -and ($null -eq $existing -or $existing.Count -lt 6)) {
-                                    $ext = if ($vidUrl -match "\.mp4$") { ".mp4" } else { ".webm" }
-                                    $outVid = Join-Path $cacheDir ("source_v45_" + $dlIdx + $ext)
-                                    $tmpVid = $outVid + ".tmp"
-                                    if (-not (Test-Path -LiteralPath $outVid)) {
-                                        $proc = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s -A `"LunKengAutoVideo4K/4.9.0`" --max-time 20 `"$vidUrl`" -o `"$tmpVid`"" -WindowStyle Hidden -Wait -PassThru
-                                        if ($proc.ExitCode -eq 0 -and (Test-Path -LiteralPath $tmpVid) -and (Get-Item -LiteralPath $tmpVid).Length -gt 50000) {
-                                            Move-Item -LiteralPath $tmpVid -Destination $outVid -Force
-                                        } else {
-                                            Remove-Item -LiteralPath $tmpVid -Force -ErrorAction SilentlyContinue
-                                        }
-                                    }
-                                    $dlIdx++
                                 } else {
-                                    $remoteUrls += ('"' + $vidUrl + '"')
+                                    $eIdx++
                                 }
                             }
                         }
                     }
-                }
-            } catch {}
+                } catch {}
+            }
 
-            $cachedFiles = Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 50000 -and $_.Extension -ne ".tmp" }
+            # Buoc 2: Quet va tai tu YouTube bang yt-dlp.exe (Chinh la nhan cot loi cua CineFetch_AI!)
+            $existing = Get-ChildItem -LiteralPath $cacheDir -File -Include *.mp4,*.webm -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 80000 }
+            if ($null -eq $existing -or $existing.Count -lt 8) {
+                $ytDlpExe = Join-Path $binDir "yt-dlp.exe"
+                if (-not (Test-Path -LiteralPath $ytDlpExe)) {
+                    $cmdYt = Get-Command yt-dlp -ErrorAction SilentlyContinue
+                    if ($null -ne $cmdYt) {
+                        $ytDlpExe = $cmdYt.Source
+                    } else {
+                        # Tim yt-dlp.exe trong thu muc CineFetch_AI tren may neu co
+                        $foundCine = Get-ChildItem -Path "$env:USERPROFILE" -Filter "yt-dlp.exe" -Recurse -Depth 3 -ErrorAction SilentlyContinue | Select-Object -First 1
+                        if ($null -ne $foundCine) {
+                            $ytDlpExe = $foundCine.FullName
+                        } else {
+                            try {
+                                Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s --max-time 20 `"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe`" -o `"$ytDlpExe`"" -WindowStyle Hidden -Wait
+                            } catch {}
+                        }
+                    }
+                }
+                if (Test-Path -LiteralPath $ytDlpExe) {
+                    try {
+                        $outTpl = Join-Path $cacheDir "yt_%(id)s.%(ext)s"
+                        Start-Process -FilePath $ytDlpExe -ArgumentList "`"ytsearch6:$ytQuery`" -f `"18/best[ext=mp4][height<=720]/best[ext=mp4]`" --match-filter `"duration >= 12 & duration <= 1800`" --max-filesize 55M --no-playlist --no-warnings -o `"$outTpl`"" -WindowStyle Hidden -Wait
+                    } catch {}
+                }
+            }
+
+            $cachedFiles = Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 80000 -and ($_.Extension -eq ".mp4" -or $_.Extension -eq ".webm") }
             $urlsArr = @()
             foreach ($cf in $cachedFiles) {
                 $encPath = [System.Uri]::EscapeDataString($cf.FullName)
                 $urlsArr += ('"http://localhost:48915/stock-cache?path=' + $encPath + '"')
             }
-            $urlsArr += $remoteUrls
             $json = '{"ok":true,"urls":[' + ($urlsArr -join ',') + ']}'
             $buf = [System.Text.Encoding]::UTF8.GetBytes($json)
             $res.ContentType = "application/json; charset=utf-8"
@@ -288,10 +307,40 @@ while ($listener.IsListening) {
         if ($path -eq "/stock-cache") {
             $fPath = [System.Uri]::UnescapeDataString(($req.QueryString["path"] + ""))
             if (-not [string]::IsNullOrWhiteSpace($fPath) -and (Test-Path -LiteralPath $fPath)) {
-                $vBytes = [System.IO.File]::ReadAllBytes($fPath)
+                $fileInfo = Get-Item -LiteralPath $fPath
+                $totalLen = $fileInfo.Length
                 $res.ContentType = if ($fPath -match "\.mp4$") { "video/mp4" } else { "video/webm" }
-                $res.ContentLength64 = $vBytes.Length
-                $res.OutputStream.Write($vBytes, 0, $vBytes.Length)
+                $res.Headers.Add("Accept-Ranges", "bytes")
+
+                $rangeHeader = $req.Headers["Range"]
+                $fs = [System.IO.File]::Open($fPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
+                try {
+                    if (-not [string]::IsNullOrWhiteSpace($rangeHeader) -and $rangeHeader -match "bytes=(\d+)-(\d*)") {
+                        $start = [int64]$Matches[1]
+                        $end = if (-not [string]::IsNullOrWhiteSpace($Matches[2])) { [int64]$Matches[2] } else { $totalLen - 1 }
+                        if ($end -ge $totalLen) { $end = $totalLen - 1 }
+                        $chunkLen = ($end - $start) + 1
+                        $res.StatusCode = 206
+                        $res.Headers.Add("Content-Range", "bytes $start-$end/$totalLen")
+                        $res.ContentLength64 = $chunkLen
+                        $fs.Seek($start, [System.IO.SeekOrigin]::Begin) | Out-Null
+                        $buf = New-Object byte[] 65536
+                        $rem = $chunkLen
+                        while ($rem -gt 0) {
+                            $toRead = [Math]::Min($buf.Length, $rem)
+                            $read = $fs.Read($buf, 0, $toRead)
+                            if ($read -le 0) { break }
+                            $res.OutputStream.Write($buf, 0, $read)
+                            $rem -= $read
+                        }
+                    } else {
+                        $res.StatusCode = 200
+                        $res.ContentLength64 = $totalLen
+                        $fs.CopyTo($res.OutputStream)
+                    }
+                } finally {
+                    $fs.Close()
+                }
                 $res.Close()
                 continue
             }

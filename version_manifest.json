@@ -1,14 +1,14 @@
 {
   "app_name": "LK_Auto_Edit_Video",
-  "latest_version": "v4.9.0",
-  "released_at": "2026-11-01T07:53:00Z",
-  "release_notes": "Bản v4.9.0: Gỡ bỏ hoàn toàn lệnh wsh.Run(..., true) chờ PowerShell làm treo cửa sổ cài đặt HTA ở mức 100%; nhúng trực tiếp auto_video_editor.html vào trong HTA để mở cửa sổ chính ngay lập tức sau 0.8 giây kể cả khi nhấp đúp trực tiếp từ trong WinRAR.",
+  "latest_version": "v5.0.0",
+  "released_at": "2026-11-01T08:32:00Z",
+  "release_notes": "Bản v5.0.0: Đưa toàn bộ nhân quét & tải Video thật của CineFetch_AI (yt-dlp.exe YouTube + bộ quét MP4 Envato Elements) vào dịch vụ nền lk_local_bridge.ps1 kèm luồng phát HTTP 206 Range từ ổ cứng; gỡ cờ --disable-web-security gây hiện thanh cảnh báo trắng.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "f007a7f427787a44e20a1cc8c785633fce379b98093579da8155685fe6eaca0f"
+      "sha256": "f035e13bad32d2f2130ec1b36fbc6ea3d758ac3087146da74a5e710ec4acf662"
     },
     {
       "path": "Lun_Keng_4K_Logo.ico",
@@ -18,12 +18,12 @@
     {
       "path": "LK_Auto_Edit_Video.hta",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
-      "sha256": "77df74efca45577f45bc51f8890ed0abb483853bb5d03b0aef3a9dfed320e9a2"
+      "sha256": "bdfe05ea427511e6d854f91ebd3827c212314e793445c7b7772242112df103e7"
     },
     {
       "path": "lk_local_bridge.ps1",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/lk_local_bridge.ps1",
-      "sha256": "50d958929d96d975d63974f8afff3b5a633611bafeecefa7ed305c0174a82349"
+      "sha256": "bf79941ae80718bc0aa36a3488994d1395fb7cddf33918dd0edceaff9151fa99"
     }
   ]
 }
