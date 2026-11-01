@@ -1,14 +1,14 @@
 {
   "app_name": "LK_Auto_Edit_Video",
-  "latest_version": "v5.6.0",
-  "released_at": "2026-11-01T12:30:00Z",
-  "release_notes": "Bản v5.6.0: Rà soát & đáp ứng 100% toàn bộ 20 yêu cầu của Lưn Keng — khôi phục chính xác giới hạn Video nguồn tối đa 30 phút (<= 1800 giây) trên cả bộ lọc YouTube yt-dlp lẫn trình cắt suộc đa đoạn, xóa vĩnh viễn 100% dữ liệu ảnh tĩnh uốn sóng khỏi mã nguồn, tách phụ đề nhịp ngắn 6-9 từ, chống trùng nguồn/kênh YT liền kề và lưu Bộ Nhớ Hệ Thống bền vững.",
+  "latest_version": "v5.7.0",
+  "released_at": "2026-11-01T13:20:00Z",
+  "release_notes": "Bản v5.7.0: Khắc phục triệt để lỗi Windows http.sys chặn 127.0.0.1 (HTTP 400 Invalid Hostname) bằng cách đồng bộ về http://localhost:48930, sửa lỗi regex ngoặc nhọn lồng nhau trên YouTube (lọc chính xác 15s <= duration <= 1800s = 30 phút), tích hợp thêm kho Mixkit by Envato (assets.mixkit.co .MP4 720p tải siêu tốc bằng curl.exe), và nạp tuần tự file .MP4 vào bộ nhớ đệm RAM Blob để không bao giờ gây nghẽn HttpListener đơn luồng.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "90c829be1b35e1efeb71520a2ad9e0953e8583b0ffb2ccbba76c0f4dadbe95df"
+      "sha256": "12d04e08e731452463b78b4ba7ed1ebdac745bdf809da7bfffa00f460bb5ea72"
     },
     {
       "path": "Lun_Keng_4K_Logo.ico",
@@ -18,12 +18,12 @@
     {
       "path": "LK_Auto_Edit_Video.hta",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
-      "sha256": "fa0fb61b09a7308079fc0e841af999f4dc55c12515d61e8ae4f39ebbc6a99b2c"
+      "sha256": "9135a319b34e59dd138fab7d242db4741f96099e5398462f85d2a5c956411e28"
     },
     {
       "path": "lk_local_bridge.ps1",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/lk_local_bridge.ps1",
-      "sha256": "96f73c9ef1b8a4fb8a160659bc9f324e8781ed50300182dcf3d57c2c202458b6"
+      "sha256": "7d1079f6a1ea99f4b8ea13047251a95cc7f7bc75cc59433260b597a08171766b"
     }
   ]
 }

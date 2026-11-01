@@ -14,19 +14,16 @@ try {
     Start-Sleep -Milliseconds 200
 } catch {}
 
-# 2. Lang nghe tren ca 127.0.0.1:48930 va localhost:48930 ngay lap tuc
+# 2. Chi dang ky http://localhost:48930/ de Windows http.sys cho phep user thuong (khong can quyen Admin) va khong bao gio bi loi HTTP 400 Invalid Hostname!
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://127.0.0.1:48930/")
 $listener.Prefixes.Add("http://localhost:48930/")
 try {
     $listener.Start()
 } catch {
-    $listener = New-Object System.Net.HttpListener
-    $listener.Prefixes.Add("http://localhost:48930/")
-    try { $listener.Start() } catch { exit }
+    exit
 }
 
-# 3. Tai san yt-dlp.exe o hau canh ngay khi vua bat phan mem (trong luc nguoi dung dang chon file Word & Audio)
+# 3. Tai san yt-dlp.exe o hau canh ngay khi vua bat phan mem
 $binDirInit = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\bin"
 New-Item -ItemType Directory -Path $binDirInit -Force | Out-Null
 $ytExeInit = Join-Path $binDirInit "yt-dlp.exe"
@@ -129,7 +126,7 @@ while ($listener.IsListening) {
         }
 
         if ($path -eq "/ping") {
-            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"5.6.0","port":48930}')
+            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"5.7.0","port":48930}')
             $res.ContentType = "application/json; charset=utf-8"
             $res.OutputStream.Write($buf, 0, $buf.Length)
             $res.Close()
@@ -224,112 +221,189 @@ while ($listener.IsListening) {
         if ($path -eq "/fetch-online-videos") {
             $theme = [System.Uri]::UnescapeDataString(($req.QueryString["theme"] + ""))
             if ([string]::IsNullOrWhiteSpace($theme)) { $theme = "nature" }
-            $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\CineFetchCache_v56\$theme"
+            $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\CineFetchCache_v57\$theme"
             $binDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\bin"
             New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
             New-Item -ItemType Directory -Path $binDir -Force | Out-Null
 
-            # Cac cum tu khoa B-Roll quay that (khop phong cach kenh The Chosen Flame: canh rung suong som, thac nuoc, may troi, song bien, nui non hung vi)
-            $ytMap = @{
-                "nature"     = @("cinematic forest mist drone b-roll no copyright", "waterfall river nature stock footage 4k no copyright", "mountain clouds sunset aerial drone b-roll")
-                "ocean"      = @("cinematic ocean waves aerial drone b-roll no copyright", "sunset beach sea waves stock footage no copyright", "coastline cliff waves drone b-roll")
-                "street"     = @("cinematic city night street rain b-roll no copyright", "urban highway traffic night timelapse stock footage", "downtown skyline night aerial b-roll")
-                "space"      = @("galaxy stars milky way timelapse stock footage", "aurora borealis night sky b-roll no copyright", "deep space nebula stars stock video")
-                "meditation" = @("calm zen river forest morning mist b-roll", "peaceful waterfall sunlight trees stock footage", "golden hour mountain lake aerial b-roll")
-                "luxury"     = @("luxury city skyline sunset aerial drone b-roll", "modern architecture yacht coast aerial stock footage", "penthouse skyline view b-roll")
-                "ancient"    = @("ancient temple mountain mist aerial drone b-roll", "historic castle ruins dramatic sky stock footage", "ancient cathedral light rays b-roll")
-                "battle"     = @("dramatic storm clouds lightning timelapse b-roll", "dark cinematic clouds mountain storm stock footage", "fire embers dramatic sky b-roll")
-                "scifi"      = @("futuristic cyberpunk neon lights b-roll", "aurora borealis cosmic sky timelapse stock footage", "digital abstract light tunnel b-roll")
-                "horror"     = @("dark misty forest fog cinematic b-roll", "spooky night woods moonlight stock footage", "abandoned dark ruins mist b-roll")
-                "romance"    = @("golden sunset meadow flowers cinematic b-roll", "beach sunset waves golden hour stock footage", "autumn leaves sunlight forest b-roll")
-                "history"    = @("ancient monument castle aerial drone b-roll", "historic architecture ruins stock footage", "old library candlelight cinematic b-roll")
+            $mixkitTagMap = @{
+                "nature"     = @("nature", "forest", "waterfall")
+                "ocean"      = @("sea", "beach", "water")
+                "street"     = @("city", "street", "traffic")
+                "space"      = @("space", "night", "sky")
+                "meditation" = @("forest", "water", "sunset")
+                "luxury"     = @("city", "luxury", "sunset")
+                "ancient"    = @("mountain", "forest", "sky")
+                "battle"     = @("fire", "storm", "smoke")
+                "scifi"      = @("space", "abstract", "light")
+                "horror"     = @("night", "smoke", "forest")
+                "romance"    = @("sunset", "flower", "beach")
+                "history"    = @("mountain", "clouds", "sunset")
             }
+            $ytMap = @{
+                "nature"     = @("cinematic forest mist drone b-roll no copyright", "waterfall river nature stock footage 4k no copyright")
+                "ocean"      = @("cinematic ocean waves aerial drone b-roll no copyright", "sunset beach sea waves stock footage no copyright")
+                "street"     = @("cinematic city night street rain b-roll no copyright", "urban highway traffic night timelapse stock footage")
+                "space"      = @("galaxy stars milky way timelapse stock footage", "aurora borealis night sky b-roll no copyright")
+                "meditation" = @("calm zen river forest morning mist b-roll", "peaceful waterfall sunlight trees stock footage")
+                "luxury"     = @("luxury city skyline sunset aerial drone b-roll", "modern architecture yacht coast aerial stock footage")
+                "ancient"    = @("ancient temple mountain mist aerial drone b-roll", "historic castle ruins dramatic sky stock footage")
+                "battle"     = @("dramatic storm clouds lightning timelapse b-roll", "dark cinematic clouds mountain storm stock footage")
+                "scifi"      = @("futuristic cyberpunk neon lights b-roll", "aurora borealis cosmic sky timelapse stock footage")
+                "horror"     = @("dark misty forest fog cinematic b-roll", "spooky night woods moonlight stock footage")
+                "romance"    = @("golden sunset meadow flowers cinematic b-roll", "beach sunset waves golden hour stock footage")
+                "history"    = @("ancient monument castle aerial drone b-roll", "historic architecture ruins stock footage")
+            }
+            $mkTags = if ($mixkitTagMap[$theme]) { $mixkitTagMap[$theme] } else { $mixkitTagMap["nature"] }
             $queries = if ($ytMap[$theme]) { $ytMap[$theme] } else { $ytMap["nature"] }
 
-            $existing = @(Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 100000 -and ($_.Extension -eq ".mp4" -or $_.Extension -eq ".webm") })
+            $existing = @(Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 80000 -and ($_.Extension -eq ".mp4" -or $_.Extension -eq ".webm") })
 
-            if ($existing.Count -lt 6) {
-                # 1. Dam bao co yt-dlp.exe trong $binDir
+            if ($existing.Count -lt 8) {
+                $dlProcs = @()
+                $dlTargets = @()
+
+                # ENGINE 1: Mixkit by Envato (assets.mixkit.co/videos/{ID}/{ID}-720.mp4) - Tai truc tiep .MP4 HD bang curl.exe trong 2 giay, khong can API key, khong bi chan tai Viet Nam!
+                $mkIds = @()
+                $seenMk = @{}
+                foreach ($tag in $mkTags) {
+                    $mkHtmlTmp = Join-Path $cacheDir ("mk_" + $tag + ".html")
+                    Remove-Item -LiteralPath $mkHtmlTmp -Force -ErrorAction SilentlyContinue
+                    Start-Process -FilePath "curl.exe" -ArgumentList "-L -s -A `"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36`" --max-time 6 `"https://mixkit.co/free-stock-video/$tag/`" -o `"$mkHtmlTmp`"" -WindowStyle Hidden -Wait
+                    if (Test-Path -LiteralPath $mkHtmlTmp) {
+                        $mkHtml = [System.IO.File]::ReadAllText($mkHtmlTmp, [System.Text.Encoding]::UTF8)
+                        Remove-Item -LiteralPath $mkHtmlTmp -Force -ErrorAction SilentlyContinue
+                        $mIds = [regex]::Matches($mkHtml, '(?:assets\.mixkit\.co/videos/|/free-stock-video/[a-z0-9-]+-)(\d{3,7})(?:/|-)')
+                        $cTag = 0
+                        foreach ($m in $mIds) {
+                            $idVal = $m.Groups[1].Value
+                            if (-not $seenMk.ContainsKey($idVal)) {
+                                $seenMk[$idVal] = $true
+                                $mkIds += $idVal
+                                $cTag++
+                                if ($cTag -ge 5) { break }
+                            }
+                        }
+                    }
+                    if ($mkIds.Count -ge 10) { break }
+                }
+
+                # Bo sung danh sach ID Mixkit da xac thuc tren CDN assets.mixkit.co phong khi mang cham
+                foreach ($fallbackId in @("2213", "41576", "42648", "2385", "35889", "4701", "1038", "4661", "30012", "4547", "4855", "4830", "40248")) {
+                    if (-not $seenMk.ContainsKey($fallbackId)) {
+                        $seenMk[$fallbackId] = $true
+                        $mkIds += $fallbackId
+                    }
+                }
+
+                $mkStarted = 0
+                foreach ($mId in $mkIds) {
+                    if ($mkStarted -ge 8) { break }
+                    $outMk = Join-Path $cacheDir ("envato_mixkit_" + $mId + ".mp4")
+                    $tmpMk = $outMk + ".tmp"
+                    if (-not (Test-Path -LiteralPath $outMk) -or (Get-Item -LiteralPath $outMk).Length -lt 80000) {
+                        $mkUrl = "https://assets.mixkit.co/videos/$mId/$mId-720.mp4"
+                        $pMk = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s --max-time 12 `"$mkUrl`" -o `"$tmpMk`"" -WindowStyle Hidden -PassThru
+                        $dlProcs += $pMk
+                        $dlTargets += @{ tmp = $tmpMk; final = $outMk }
+                        $mkStarted++
+                    }
+                }
+
+                # ENGINE 2: YouTube (yt-dlp.exe voi bo loc do dai Video nguon TOI DA 30 PHUT: 15s <= duration <= 1800s!)
                 $ytDlpExe = Join-Path $binDir "yt-dlp.exe"
                 if (-not (Test-Path -LiteralPath $ytDlpExe) -or (Get-Item -LiteralPath $ytDlpExe).Length -lt 1000000) {
                     $cmdYt = Get-Command yt-dlp -ErrorAction SilentlyContinue
                     if ($null -ne $cmdYt) {
                         $ytDlpExe = $cmdYt.Source
-                    } else {
-                        Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s --max-time 25 `"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe`" -o `"$ytDlpExe`"" -WindowStyle Hidden -Wait
                     }
                 }
 
-                # 2. Quet danh sach videoId YouTube voi gioi han do dai Video nguon TOI DA 30 PHUT (15s <= duration <= 1800s)!
                 $vidIds = @()
                 $seenVid = @{}
                 foreach ($qStr in $queries) {
                     $encQ = [System.Uri]::EscapeDataString($qStr)
-                    # Quet ca video ngan & video trung binh/dai (toi da 30 phut = 1800 giay)
-                    foreach ($spFilter in @("EgIQAQ%3D%3D", "EgQQARgD", "EgQQARgB")) {
+                    foreach ($spFilter in @("EgIQAQ%3D%3D", "EgQQARgD")) {
                         $searchUrl = "https://www.youtube.com/results?search_query=$encQ&sp=$spFilter"
                         $htmlTmp = Join-Path $cacheDir "yt_search.html"
                         Remove-Item -LiteralPath $htmlTmp -Force -ErrorAction SilentlyContinue
-                        Start-Process -FilePath "curl.exe" -ArgumentList "-L -s -A `"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36`" --max-time 7 `"$searchUrl`" -o `"$htmlTmp`"" -WindowStyle Hidden -Wait
+                        Start-Process -FilePath "curl.exe" -ArgumentList "-L -s -A `"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36`" --max-time 6 `"$searchUrl`" -o `"$htmlTmp`"" -WindowStyle Hidden -Wait
                         if (Test-Path -LiteralPath $htmlTmp) {
                             $rawHtml = [System.IO.File]::ReadAllText($htmlTmp, [System.Text.Encoding]::UTF8)
                             Remove-Item -LiteralPath $htmlTmp -Force -ErrorAction SilentlyContinue
-                            $vrMatches = [regex]::Matches($rawHtml, '"videoRenderer":\{"videoId":"([a-zA-Z0-9_-]{11})".*?"lengthText":\{[^}]*?"simpleText":"([0-9:]+)"')
+                            # Tach tung khoi videoRenderer (khong bi loi ngoac nhon long nhau cua accessibilityData!)
+                            $chunks = $rawHtml -split '"videoRenderer":\{"videoId":"'
                             $takenFromQ = 0
-                            foreach ($m in $vrMatches) {
-                                $vId = $m.Groups[1].Value
-                                $timeStr = $m.Groups[2].Value
-                                $parts = $timeStr -split ':'
-                                $durSec = 0
-                                if ($parts.Count -eq 2) {
-                                    $durSec = ([int]$parts[0] * 60) + [int]$parts[1]
-                                } elseif ($parts.Count -eq 3) {
-                                    $durSec = ([int]$parts[0] * 3600) + ([int]$parts[1] * 60) + [int]$parts[2]
-                                }
-                                # RANG BUOC CHINH XAC: Chi lay Video nguon co do dai tu 15 giay den TOI DA 30 PHUT (<= 1800 giay)!
-                                if ($durSec -ge 15 -and $durSec -le 1800 -and (-not $seenVid.ContainsKey($vId))) {
-                                    $seenVid[$vId] = $true
-                                    $vidIds += $vId
-                                    $takenFromQ++
-                                    if ($takenFromQ -ge 3) { break }
+                            for ($cIdx = 1; $cIdx -lt $chunks.Count; $cIdx++) {
+                                $chunk = $chunks[$cIdx]
+                                if ($chunk.Length -lt 11) { continue }
+                                $vId = $chunk.Substring(0, 11)
+                                if ($vId -notmatch '^[a-zA-Z0-9_-]{11}$') { continue }
+                                $subChunk = if ($chunk.Length -gt 3500) { $chunk.Substring(0, 3500) } else { $chunk }
+                                $durMatch = [regex]::Match($subChunk, '"simpleText":"([0-9]+:[0-9:]+)"')
+                                if ($durMatch.Success) {
+                                    $parts = $durMatch.Groups[1].Value -split ':'
+                                    $durSec = 0
+                                    if ($parts.Count -eq 2) {
+                                        $durSec = ([int]$parts[0] * 60) + [int]$parts[1]
+                                    } elseif ($parts.Count -eq 3) {
+                                        $durSec = ([int]$parts[0] * 3600) + ([int]$parts[1] * 60) + [int]$parts[2]
+                                    }
+                                    # RANG BUOC CHINH XAC: Video nguon tu 15 giay den TOI DA 30 PHUT (<= 1800 giay)!
+                                    if ($durSec -ge 15 -and $durSec -le 1800 -and (-not $seenVid.ContainsKey($vId))) {
+                                        $seenVid[$vId] = $true
+                                        $vidIds += $vId
+                                        $takenFromQ++
+                                        if ($takenFromQ -ge 3) { break }
+                                    }
                                 }
                             }
                         }
-                        if ($vidIds.Count -ge 9) { break }
+                        if ($vidIds.Count -ge 6) { break }
                     }
-                    if ($vidIds.Count -ge 9) { break }
+                    if ($vidIds.Count -ge 6) { break }
                 }
 
-                # 3. Chay song song cac tien trinh yt-dlp.exe voi --match-filter "duration >= 15 & duration <= 1800" (toi da 30 phut) & --max-filesize 350M!
                 if ((Test-Path -LiteralPath $ytDlpExe) -and $vidIds.Count -gt 0) {
-                    $procs = @()
                     $countStarted = 0
                     foreach ($vId in $vidIds) {
-                        if ($countStarted -ge 7) { break }
-                        $existingVid = Get-ChildItem -LiteralPath $cacheDir -Filter ("yt_" + $vId + ".*") -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 100000 }
+                        if ($countStarted -ge 4) { break }
+                        $existingVid = Get-ChildItem -LiteralPath $cacheDir -Filter ("yt_" + $vId + ".*") -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 80000 }
                         if ($null -eq $existingVid -or $existingVid.Count -eq 0) {
                             $outTpl = Join-Path $cacheDir ("yt_" + $vId + ".%(ext)s")
-                            $p = Start-Process -FilePath $ytDlpExe -ArgumentList "`"https://www.youtube.com/watch?v=$vId`" -f `"18/b[height<=720][ext=mp4]/b[ext=mp4]/b`" --match-filter `"duration >= 15 & duration <= 1800`" --max-filesize 350M --no-playlist --no-part --no-warnings -o `"$outTpl`"" -WindowStyle Hidden -PassThru
-                            $procs += $p
+                            $pYt = Start-Process -FilePath $ytDlpExe -ArgumentList "`"https://www.youtube.com/watch?v=$vId`" -f `"bv*[height<=720][ext=mp4]/b[height<=720][ext=mp4]/18/b`" --match-filter `"duration >= 15 & duration <= 1800`" --max-filesize 350M --no-playlist --no-part --no-warnings -o `"$outTpl`"" -WindowStyle Hidden -PassThru
+                            $dlProcs += $pYt
                             $countStarted++
                         }
                     }
-                    $tStart = [DateTime]::UtcNow
-                    while (([DateTime]::UtcNow - $tStart).TotalMilliseconds -lt 26000) {
-                        $readyFiles = @(Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 100000 -and ($_.Extension -eq ".mp4" -or $_.Extension -eq ".webm") })
-                        if ($readyFiles.Count -ge 6) { break }
-                        $stillRunning = @($procs | Where-Object { -not $_.HasExited })
-                        if ($stillRunning.Count -eq 0) { break }
-                        Start-Sleep -Milliseconds 500
+                }
+
+                # Cho cac tien trinh tai song song (ngay khi du >= 6 video .mp4 la tra ve ngay!)
+                $tStart = [DateTime]::UtcNow
+                while (([DateTime]::UtcNow - $tStart).TotalMilliseconds -lt 18000) {
+                    foreach ($t in $dlTargets) {
+                        if ((Test-Path -LiteralPath $t.tmp) -and (Get-Item -LiteralPath $t.tmp).Length -gt 80000) {
+                            Move-Item -LiteralPath $t.tmp -Destination $t.final -Force -ErrorAction SilentlyContinue
+                        }
+                    }
+                    $readyNow = @(Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 80000 -and ($_.Extension -eq ".mp4" -or $_.Extension -eq ".webm") })
+                    if ($readyNow.Count -ge 6) { break }
+                    $runningNow = @($dlProcs | Where-Object { -not $_.HasExited })
+                    if ($runningNow.Count -eq 0) { break }
+                    Start-Sleep -Milliseconds 400
+                }
+                foreach ($t in $dlTargets) {
+                    if ((Test-Path -LiteralPath $t.tmp) -and (Get-Item -LiteralPath $t.tmp).Length -gt 80000) {
+                        Move-Item -LiteralPath $t.tmp -Destination $t.final -Force -ErrorAction SilentlyContinue
                     }
                 }
             }
 
-            $cachedFiles = @(Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 100000 -and ($_.Extension -eq ".mp4" -or $_.Extension -eq ".webm") })
+            $cachedFiles = @(Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 80000 -and ($_.Extension -eq ".mp4" -or $_.Extension -eq ".webm") })
             $urlsArr = @()
             foreach ($cf in $cachedFiles) {
                 $encPath = [System.Uri]::EscapeDataString($cf.FullName)
-                $urlsArr += ('"http://127.0.0.1:48930/stock-cache?path=' + $encPath + '"')
+                $urlsArr += ('"http://localhost:48930/stock-cache?path=' + $encPath + '"')
             }
             $json = '{"ok":true,"urls":[' + ($urlsArr -join ',') + ']}'
             $buf = [System.Text.Encoding]::UTF8.GetBytes($json)
@@ -339,111 +413,14 @@ while ($listener.IsListening) {
             continue
         }
 
-        if ($path -eq "/proxy-video") {
-            $remoteUrl = [System.Uri]::UnescapeDataString(($req.QueryString["url"] + ""))
-            $theme = [System.Uri]::UnescapeDataString(($req.QueryString["theme"] + ""))
-            if ([string]::IsNullOrWhiteSpace($theme)) { $theme = "nature" }
-            if (-not [string]::IsNullOrWhiteSpace($remoteUrl) -and $remoteUrl -match "^https?://") {
-                $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\CineFetchCache_v56\$theme"
-                New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
-
-                $md5 = [System.Security.Cryptography.MD5]::Create()
-                $hashBytes = $md5.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($remoteUrl))
-                $hashHex = ([System.BitConverter]::ToString($hashBytes) -replace '-', '').Substring(0, 16).ToLower()
-                $ext = if ($remoteUrl -match "\.mp4(\?|$)") { ".mp4" } else { ".webm" }
-                $localFile = Join-Path $cacheDir ("proxy_" + $hashHex + $ext)
-                $tmpFile = $localFile + ".tmp"
-
-                if (-not (Test-Path -LiteralPath $localFile) -or (Get-Item -LiteralPath $localFile).Length -lt 50000) {
-                    $p = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s --max-time 12 `"$remoteUrl`" -o `"$tmpFile`"" -WindowStyle Hidden -Wait -PassThru
-                    if ($p.ExitCode -eq 0 -and (Test-Path -LiteralPath $tmpFile) -and (Get-Item -LiteralPath $tmpFile).Length -gt 50000) {
-                        Move-Item -LiteralPath $tmpFile -Destination $localFile -Force
-                    } else {
-                        Remove-Item -LiteralPath $tmpFile -Force -ErrorAction SilentlyContinue
-                    }
-                }
-
-                if (Test-Path -LiteralPath $localFile) {
-                    $fileInfo = Get-Item -LiteralPath $localFile
-                    $totalLen = $fileInfo.Length
-                    $res.ContentType = if ($localFile -match "\.mp4$") { "video/mp4" } else { "video/webm" }
-                    $res.Headers.Add("Accept-Ranges", "bytes")
-
-                    $rangeHeader = $req.Headers["Range"]
-                    $fs = [System.IO.File]::Open($localFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-                    try {
-                        if (-not [string]::IsNullOrWhiteSpace($rangeHeader) -and $rangeHeader -match "bytes=(\d+)-(\d*)") {
-                            $start = [int64]$Matches[1]
-                            $end = if (-not [string]::IsNullOrWhiteSpace($Matches[2])) { [int64]$Matches[2] } else { $totalLen - 1 }
-                            if ($end -ge $totalLen) { $end = $totalLen - 1 }
-                            $chunkLen = ($end - $start) + 1
-                            $res.StatusCode = 206
-                            $res.Headers.Add("Content-Range", "bytes $start-$end/$totalLen")
-                            $res.ContentLength64 = $chunkLen
-                            $fs.Seek($start, [System.IO.SeekOrigin]::Begin) | Out-Null
-                            $buf = New-Object byte[] 65536
-                            $rem = $chunkLen
-                            while ($rem -gt 0) {
-                                $toRead = [Math]::Min($buf.Length, $rem)
-                                $read = $fs.Read($buf, 0, $toRead)
-                                if ($read -le 0) { break }
-                                $res.OutputStream.Write($buf, 0, $read)
-                                $rem -= $read
-                            }
-                        } else {
-                            $res.StatusCode = 200
-                            $res.ContentLength64 = $totalLen
-                            $fs.CopyTo($res.OutputStream)
-                        }
-                    } finally {
-                        $fs.Close()
-                    }
-                    $res.Close()
-                    continue
-                }
-            }
-            $res.StatusCode = 404
-            $res.Close()
-            continue
-        }
-
         if ($path -eq "/stock-cache") {
             $fPath = [System.Uri]::UnescapeDataString(($req.QueryString["path"] + ""))
             if (-not [string]::IsNullOrWhiteSpace($fPath) -and (Test-Path -LiteralPath $fPath)) {
-                $fileInfo = Get-Item -LiteralPath $fPath
-                $totalLen = $fileInfo.Length
+                $fileBytes = [System.IO.File]::ReadAllBytes($fPath)
                 $res.ContentType = if ($fPath -match "\.mp4$") { "video/mp4" } else { "video/webm" }
-                $res.Headers.Add("Accept-Ranges", "bytes")
-
-                $rangeHeader = $req.Headers["Range"]
-                $fs = [System.IO.File]::Open($fPath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::ReadWrite)
-                try {
-                    if (-not [string]::IsNullOrWhiteSpace($rangeHeader) -and $rangeHeader -match "bytes=(\d+)-(\d*)") {
-                        $start = [int64]$Matches[1]
-                        $end = if (-not [string]::IsNullOrWhiteSpace($Matches[2])) { [int64]$Matches[2] } else { $totalLen - 1 }
-                        if ($end -ge $totalLen) { $end = $totalLen - 1 }
-                        $chunkLen = ($end - $start) + 1
-                        $res.StatusCode = 206
-                        $res.Headers.Add("Content-Range", "bytes $start-$end/$totalLen")
-                        $res.ContentLength64 = $chunkLen
-                        $fs.Seek($start, [System.IO.SeekOrigin]::Begin) | Out-Null
-                        $buf = New-Object byte[] 65536
-                        $rem = $chunkLen
-                        while ($rem -gt 0) {
-                            $toRead = [Math]::Min($buf.Length, $rem)
-                            $read = $fs.Read($buf, 0, $toRead)
-                            if ($read -le 0) { break }
-                            $res.OutputStream.Write($buf, 0, $read)
-                            $rem -= $read
-                        }
-                    } else {
-                        $res.StatusCode = 200
-                        $res.ContentLength64 = $totalLen
-                        $fs.CopyTo($res.OutputStream)
-                    }
-                } finally {
-                    $fs.Close()
-                }
+                $res.StatusCode = 200
+                $res.ContentLength64 = $fileBytes.Length
+                $res.OutputStream.Write($fileBytes, 0, $fileBytes.Length)
                 $res.Close()
                 continue
             }
