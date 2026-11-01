@@ -1,14 +1,14 @@
 {
   "app_name": "LK_Auto_Edit_Video",
-  "latest_version": "v5.4.0",
-  "released_at": "2026-11-01T09:49:00Z",
-  "release_notes": "Bản v5.4.0: Khắc phục triệt để lỗi Chromium chặn Private Network Access (origin 'null' -> loopback) khi gọi localhost từ file:/// bằng cơ chế tự động nâng cấp lên http://localhost:48930/app + cờ --disable-features=BlockInsecurePrivateNetworkRequests + kho 12 luồng Video dự phòng nội bộ.",
+  "latest_version": "v5.6.0",
+  "released_at": "2026-11-01T12:30:00Z",
+  "release_notes": "Bản v5.6.0: Rà soát & đáp ứng 100% toàn bộ 20 yêu cầu của Lưn Keng — khôi phục chính xác giới hạn Video nguồn tối đa 30 phút (<= 1800 giây) trên cả bộ lọc YouTube yt-dlp lẫn trình cắt suộc đa đoạn, xóa vĩnh viễn 100% dữ liệu ảnh tĩnh uốn sóng khỏi mã nguồn, tách phụ đề nhịp ngắn 6-9 từ, chống trùng nguồn/kênh YT liền kề và lưu Bộ Nhớ Hệ Thống bền vững.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "ed1a5e5f4bd2fb692503f83608a27a4eda95ca0d725ec0390c68baa775ec5052"
+      "sha256": "90c829be1b35e1efeb71520a2ad9e0953e8583b0ffb2ccbba76c0f4dadbe95df"
     },
     {
       "path": "Lun_Keng_4K_Logo.ico",
@@ -18,12 +18,12 @@
     {
       "path": "LK_Auto_Edit_Video.hta",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
-      "sha256": "1da5eb50cd84dc8dd97518802c58ffbe366983018607da30dabb72b368908a9d"
+      "sha256": "fa0fb61b09a7308079fc0e841af999f4dc55c12515d61e8ae4f39ebbc6a99b2c"
     },
     {
       "path": "lk_local_bridge.ps1",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/lk_local_bridge.ps1",
-      "sha256": "158a06a96fe28010bd29815a67a7f9970d8708405c1ea5efc2e4d4b91e515b6a"
+      "sha256": "96f73c9ef1b8a4fb8a160659bc9f324e8781ed50300182dcf3d57c2c202458b6"
     }
   ]
 }
