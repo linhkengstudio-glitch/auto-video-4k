@@ -4,18 +4,18 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
-# Tu dong tat tien trinh lk_local_bridge cu dang chiem cong 48915 de luon chay ban moi nhat!
+# Tat triet de tien trinh powershell lk_local_bridge cu qua WMI Win32_Process (Khong dung Get-NetTCPConnection vi http.sys luon bao PID=4!)
 try {
-    Get-NetTCPConnection -LocalPort 48915 -ErrorAction SilentlyContinue | ForEach-Object {
-        if ($_.OwningProcess -ne $PID -and $_.OwningProcess -gt 4) {
-            Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue
-        }
+    Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object {
+        $_.ProcessId -ne $PID -and $_.Name -match "powershell" -and $_.CommandLine -match "lk_local_bridge"
+    } | ForEach-Object {
+        Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
     }
-    Start-Sleep -Milliseconds 350
+    Start-Sleep -Milliseconds 300
 } catch {}
 
 $listener = New-Object System.Net.HttpListener
-$listener.Prefixes.Add("http://localhost:48915/")
+$listener.Prefixes.Add("http://localhost:48930/")
 try {
     $listener.Start()
 } catch {
@@ -55,6 +55,7 @@ while ($listener.IsListening) {
         $res.Headers.Add("Access-Control-Allow-Origin", "*")
         $res.Headers.Add("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         $res.Headers.Add("Access-Control-Allow-Headers", "*")
+        $res.Headers.Add("Access-Control-Allow-Private-Network", "true")
 
         if ($req.HttpMethod -eq "OPTIONS") {
             $res.StatusCode = 200
@@ -64,7 +65,27 @@ while ($listener.IsListening) {
 
         $path = $req.Url.AbsolutePath
 
-                if ($path -eq "/memory-vault") {
+                if ($path -eq "/app" -or $path -eq "/") {
+            $htmlFile = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\auto_video_editor.html"
+            if (Test-Path -LiteralPath $htmlFile) {
+                $htmlBytes = [System.IO.File]::ReadAllBytes($htmlFile)
+                $res.ContentType = "text/html; charset=utf-8"
+                $res.ContentLength64 = $htmlBytes.Length
+                $res.OutputStream.Write($htmlBytes, 0, $htmlBytes.Length)
+                $res.Close()
+                continue
+            }
+        }
+
+        if ($path -eq "/bridge-alive.js") {
+            $jsBytes = [System.Text.Encoding]::UTF8.GetBytes("if (window.__LK_BRIDGE_READY_CALLBACK__) window.__LK_BRIDGE_READY_CALLBACK__();")
+            $res.ContentType = "application/javascript; charset=utf-8"
+            $res.OutputStream.Write($jsBytes, 0, $jsBytes.Length)
+            $res.Close()
+            continue
+        }
+
+        if ($path -eq "/memory-vault") {
             $vaultPath = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\system_memory_vault.json"
             if ($req.HttpMethod -eq "POST") {
                 $sr = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
@@ -96,7 +117,7 @@ while ($listener.IsListening) {
         }
 
         if ($path -eq "/ping") {
-            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"5.2.0"}')
+            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"5.4.0","port":48930}')
             $res.ContentType = "application/json; charset=utf-8"
             $res.OutputStream.Write($buf, 0, $buf.Length)
             $res.Close()
@@ -188,127 +209,143 @@ while ($listener.IsListening) {
             continue
         }
 
-
         if ($path -eq "/fetch-online-videos") {
             $theme = [System.Uri]::UnescapeDataString(($req.QueryString["theme"] + ""))
             if ([string]::IsNullOrWhiteSpace($theme)) { $theme = "nature" }
-            $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\CineFetchCache_v52\$theme"
+            $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\CineFetchCache_v53\$theme"
             $binDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\bin"
             New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
             New-Item -ItemType Directory -Path $binDir -Force | Out-Null
 
-            $qMap = @{
-                "nature"     = @("filetype:video waterfall forest river nature", "filetype:video mountain trees landscape")
-                "ocean"      = @("filetype:video ocean waves beach sea", "filetype:video coral reef underwater coast")
-                "street"     = @("filetype:video city traffic night street", "filetype:video urban highway timelapse")
-                "space"      = @("filetype:video night sky stars aurora", "filetype:video earth space galaxy")
-                "meditation" = @("filetype:video river waterfall stream calm", "filetype:video sunrise mist forest")
-                "luxury"     = @("filetype:video aerial city skyline", "filetype:video yacht architecture modern")
-                "ancient"    = @("filetype:video castle temple mountain", "filetype:video ruins stone architecture")
-                "battle"     = @("filetype:video storm lightning clouds", "filetype:video fire smoke dramatic sky")
-                "scifi"      = @("filetype:video aurora lights timelapse", "filetype:video technology abstract light")
-                "horror"     = @("filetype:video fog mist dark forest", "filetype:video night moon clouds spooky")
-                "romance"    = @("filetype:video sunset flowers clouds", "filetype:video beach golden hour waves")
-                "history"    = @("filetype:video monument castle aerial", "filetype:video cathedral museum historic")
+            $archMap = @{
+                "nature"     = "waterfall nature OR forest river nature"
+                "ocean"      = "ocean waves beach OR sea coast underwater"
+                "street"     = "city traffic night OR street cars urban"
+                "space"      = "galaxy stars space OR aurora night sky"
+                "meditation" = "calm river waterfall OR zen nature mist"
+                "luxury"     = "city skyline aerial OR modern architecture"
+                "ancient"    = "ancient temple ruins OR castle mountain"
+                "battle"     = "storm lightning clouds OR thunderstorm sky"
+                "scifi"      = "aurora timelapse OR futuristic neon light"
+                "horror"     = "dark forest fog OR spooky night mist"
+                "romance"    = "sunset flowers nature OR golden hour beach"
+                "history"    = "historic castle monument OR ancient ruins"
             }
-            $queries = if ($qMap[$theme]) { $qMap[$theme] } else { $qMap["nature"] }
+            $ytMap = @{
+                "nature"     = "4k waterfall forest river nature relaxation no copyright"
+                "ocean"      = "4k ocean waves beach sea aerial no copyright"
+                "street"     = "4k city traffic night street timelapse no copyright"
+                "space"      = "4k galaxy stars aurora night sky no copyright"
+                "meditation" = "4k calm river zen waterfall meditation no copyright"
+                "luxury"     = "4k city skyline luxury aerial drone no copyright"
+                "ancient"    = "4k ancient temple castle mountain aerial no copyright"
+                "battle"     = "4k storm lightning dark clouds cinematic no copyright"
+                "scifi"      = "4k aurora borealis cyberpunk lights no copyright"
+                "horror"     = "4k dark spooky fog forest mist no copyright"
+                "romance"    = "4k golden sunset flowers beach clouds no copyright"
+                "history"    = "4k historic castle monument aerial no copyright"
+            }
+            $archQ = if ($archMap[$theme]) { $archMap[$theme] } else { $archMap["nature"] }
+            $ytQ = if ($ytMap[$theme]) { $ytMap[$theme] } else { $ytMap["nature"] }
 
             $existing = @(Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 60000 -and ($_.Extension -eq ".mp4" -or $_.Extension -eq ".webm") })
             $remoteUrls = @()
-            $dlCount = $existing.Count
 
-            # Dung curl.exe cua Windows 10/11 de truy van API va tai 6 file Video quay that ve o cung (Tranh 100% loi TLS 1.0 cua WebClient tren PowerShell 5.1!)
-            foreach ($searchQuery in $queries) {
-                $encQ = [System.Uri]::EscapeDataString($searchQuery)
-                $apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=$encQ&gsrlimit=30&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json"
-                $jsonTmp = Join-Path $cacheDir "api_resp.json"
-                Remove-Item -LiteralPath $jsonTmp -Force -ErrorAction SilentlyContinue
+            # Nguon 1: Internet Archive Open Video (.MP4 H.264 truc tiep - khong bi chan tai Viet Nam nhu upload.wikimedia.org!)
+            if ($existing.Count -lt 6) {
+                $fullArchQ = "mediatype:movies AND ($archQ) AND NOT collection:tvarchive AND NOT collection:newsandpublicaffairs"
+                $encArchQ = [System.Uri]::EscapeDataString($fullArchQ)
+                $archApiUrl = "https://archive.org/advancedsearch.php?q=$encArchQ&fl[]=identifier&rows=12&page=1&output=json"
+                $archJsonTmp = Join-Path $cacheDir "arch_search.json"
+                Remove-Item -LiteralPath $archJsonTmp -Force -ErrorAction SilentlyContinue
                 try {
-                    Start-Process -FilePath "curl.exe" -ArgumentList "-L -s -A `"Mozilla/5.0 (Windows NT 10.0; Win64; x64) LunKengAutoVideo4K/5.2.0`" --max-time 10 `"$apiUrl`" -o `"$jsonTmp`"" -WindowStyle Hidden -Wait
-                    if (Test-Path -LiteralPath $jsonTmp) {
-                        $rawJson = [System.IO.File]::ReadAllText($jsonTmp, [System.Text.Encoding]::UTF8)
-                        $apiJson = $rawJson | ConvertFrom-Json
-                        if ($null -ne $apiJson.query -and $null -ne $apiJson.query.pages) {
-                            foreach ($prop in $apiJson.query.pages.PSObject.Properties) {
-                                $page = $prop.Value
-                                $vInfoList = if ($null -ne $page.videoinfo) { $page.videoinfo } else { $page.imageinfo }
-                                if ($null -ne $vInfoList -and $vInfoList.Count -gt 0) {
-                                    $info = $vInfoList[0]
-                                    if ($info.duration -and ($info.duration -lt 7 -or $info.duration -gt 1800)) { continue }
-                                    $vidUrl = ""
-                                    if ($null -ne $info.derivatives) {
-                                        foreach ($d in $info.derivatives) {
-                                            $dSrc = "" + $d.src
-                                            if ($dSrc.StartsWith("//")) { $dSrc = "https:" + $dSrc }
-                                            if ($dSrc -match "\.(webm|mp4)$" -and $dSrc -notmatch "\.(ogv|ogg|m3u8|mpd)$") {
-                                                $w = if ($d.width) { [int]$d.width } else { 640 }
-                                                if ($w -ge 200 -and $w -le 1300) {
-                                                    $vidUrl = $dSrc
-                                                    break
-                                                }
-                                                if ([string]::IsNullOrWhiteSpace($vidUrl)) {
-                                                    $vidUrl = $dSrc
-                                                }
-                                            }
+                    Start-Process -FilePath "curl.exe" -ArgumentList "-L -s --max-time 7 `"$archApiUrl`" -o `"$archJsonTmp`"" -WindowStyle Hidden -Wait
+                    if (Test-Path -LiteralPath $archJsonTmp) {
+                        $archData = [System.IO.File]::ReadAllText($archJsonTmp, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+                        $docs = $archData.response.docs
+                        $dlProcs = @()
+                        $dlTargets = @()
+                        $idx = 1
+                        foreach ($doc in $docs) {
+                            if ($idx -gt 8) { break }
+                            $id = "" + $doc.identifier
+                            if ([string]::IsNullOrWhiteSpace($id)) { continue }
+                            $metaTmp = Join-Path $cacheDir ("meta_" + $idx + ".json")
+                            Remove-Item -LiteralPath $metaTmp -Force -ErrorAction SilentlyContinue
+                            Start-Process -FilePath "curl.exe" -ArgumentList "-L -s --max-time 5 `"https://archive.org/metadata/$id`" -o `"$metaTmp`"" -WindowStyle Hidden -Wait
+                            if (Test-Path -LiteralPath $metaTmp) {
+                                $metaObj = [System.IO.File]::ReadAllText($metaTmp, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+                                Remove-Item -LiteralPath $metaTmp -Force -ErrorAction SilentlyContinue
+                                if ($null -ne $metaObj.files) {
+                                    $bestMp4 = ""
+                                    foreach ($f in $metaObj.files) {
+                                        $fName = "" + $f.name
+                                        $fSize = if ($f.size) { [int64]$f.size } else { 0 }
+                                        if ($fName -match "\.mp4$" -and ($fSize -eq 0 -or ($fSize -gt 80000 -and $fSize -lt 45000000))) {
+                                            $encName = [System.Uri]::EscapeDataString($fName) -replace '%2F', '/'
+                                            $bestMp4 = "https://archive.org/download/$id/$encName"
+                                            if ($fSize -gt 150000 -and $fSize -le 18000000) { break }
                                         }
                                     }
-                                    if ([string]::IsNullOrWhiteSpace($vidUrl) -and $info.url) {
-                                        $uOrig = "" + $info.url
-                                        if ($uOrig.StartsWith("//")) { $uOrig = "https:" + $uOrig }
-                                        if ($uOrig -match "\.(webm|mp4)$" -and (-not $info.size -or $info.size -lt 35000000)) {
-                                            $vidUrl = $uOrig
-                                        }
-                                    }
-                                    if (-not [string]::IsNullOrWhiteSpace($vidUrl)) {
-                                        if ($dlCount -lt 6) {
-                                            $ext = if ($vidUrl -match "\.mp4$") { ".mp4" } else { ".webm" }
-                                            $nextNum = $dlCount + 1
-                                            $outVid = Join-Path $cacheDir ("source_v52_" + $nextNum + "_" + $page.pageid + $ext)
-                                            $tmpVid = $outVid + ".tmp"
-                                            if (-not (Test-Path -LiteralPath $outVid)) {
-                                                $pDl = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s -A `"Mozilla/5.0 (Windows NT 10.0; Win64; x64) LunKengAutoVideo4K/5.2.0`" --max-time 14 `"$vidUrl`" -o `"$tmpVid`"" -WindowStyle Hidden -Wait -PassThru
-                                                if ($pDl.ExitCode -eq 0 -and (Test-Path -LiteralPath $tmpVid) -and (Get-Item -LiteralPath $tmpVid).Length -gt 60000) {
-                                                    Move-Item -LiteralPath $tmpVid -Destination $outVid -Force
-                                                    $dlCount++
-                                                } else {
-                                                    Remove-Item -LiteralPath $tmpVid -Force -ErrorAction SilentlyContinue
-                                                    $remoteUrls += ('"' + $vidUrl + '"')
-                                                }
-                                            } else {
-                                                $dlCount++
+                                    if (-not [string]::IsNullOrWhiteSpace($bestMp4)) {
+                                        $remoteUrls += ('"' + $bestMp4 + '"')
+                                        if ($dlProcs.Count -lt 5) {
+                                            $outMp4 = Join-Path $cacheDir ("arch_" + $idx + ".mp4")
+                                            $tmpMp4 = $outMp4 + ".tmp"
+                                            if (-not (Test-Path -LiteralPath $outMp4)) {
+                                                $p = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s --max-time 14 `"$bestMp4`" -o `"$tmpMp4`"" -WindowStyle Hidden -PassThru
+                                                $dlProcs += $p
+                                                $dlTargets += @{ tmp = $tmpMp4; final = $outMp4 }
                                             }
-                                        } else {
-                                            $remoteUrls += ('"' + $vidUrl + '"')
                                         }
+                                        $idx++
                                     }
                                 }
                             }
                         }
+                        # Cho cac tien trinh curl.exe tai song song (toi da 14 giay cho ca 5 video!)
+                        $waitStart = [DateTime]::UtcNow
+                        foreach ($p in $dlProcs) {
+                            $remMs = [Math]::Max(500, 14000 - [int]([DateTime]::UtcNow - $waitStart).TotalMilliseconds)
+                            try { $p.WaitForExit($remMs) | Out-Null } catch {}
+                        }
+                        foreach ($t in $dlTargets) {
+                            if ((Test-Path -LiteralPath $t.tmp) -and (Get-Item -LiteralPath $t.tmp).Length -gt 60000) {
+                                Move-Item -LiteralPath $t.tmp -Destination $t.final -Force -ErrorAction SilentlyContinue
+                            } else {
+                                Remove-Item -LiteralPath $t.tmp -Force -ErrorAction SilentlyContinue
+                            }
+                        }
                     }
                 } catch {}
-                Remove-Item -LiteralPath $jsonTmp -Force -ErrorAction SilentlyContinue
+                Remove-Item -LiteralPath $archJsonTmp -Force -ErrorAction SilentlyContinue
             }
 
-            # Du phong 2: Neu van chua du 4 file video tren o cung, dung yt-dlp.exe tai them tu YouTube!
+            # Nguon 2: Neu co yt-dlp (hoac python -m yt_dlp tu CineFetch_AI), tai them luong .MP4 tu YouTube!
             $cachedNow = @(Get-ChildItem -LiteralPath $cacheDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Length -gt 60000 -and ($_.Extension -eq ".mp4" -or $_.Extension -eq ".webm") })
-            if ($cachedNow.Count -lt 4) {
+            if ($cachedNow.Count -lt 3) {
                 $ytDlpExe = Join-Path $binDir "yt-dlp.exe"
                 if (-not (Test-Path -LiteralPath $ytDlpExe)) {
                     $cmdYt = Get-Command yt-dlp -ErrorAction SilentlyContinue
                     if ($null -ne $cmdYt) {
                         $ytDlpExe = $cmdYt.Source
-                    } else {
-                        try {
-                            Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s --max-time 18 `"https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe`" -o `"$ytDlpExe`"" -WindowStyle Hidden -Wait
-                        } catch {}
                     }
                 }
                 if (Test-Path -LiteralPath $ytDlpExe) {
                     try {
-                        $ytQ = ($queries[0] -replace "filetype:video\s*", "") + " 4k no copyright"
                         $outTpl = Join-Path $cacheDir "yt_%(id)s.%(ext)s"
-                        Start-Process -FilePath $ytDlpExe -ArgumentList "`"ytsearch4:$ytQ`" -f `"b[height<=720][ext=mp4]/b[ext=mp4]/b[ext=webm]/b`" --max-filesize 45M --no-playlist --no-warnings -o `"$outTpl`"" -WindowStyle Hidden -Wait
+                        $pYt = Start-Process -FilePath $ytDlpExe -ArgumentList "`"ytsearch4:$ytQ`" -f `"b[height<=720][ext=mp4]/b[ext=mp4]/18/b`" --max-filesize 40M --no-playlist --no-warnings -o `"$outTpl`"" -WindowStyle Hidden -PassThru
+                        $pYt.WaitForExit(14000) | Out-Null
                     } catch {}
+                } else {
+                    $pyCmd = Get-Command python -ErrorAction SilentlyContinue
+                    if ($null -ne $pyCmd) {
+                        try {
+                            $outTpl = Join-Path $cacheDir "yt_%(id)s.%(ext)s"
+                            $pPy = Start-Process -FilePath "python" -ArgumentList "-m yt_dlp `"ytsearch4:$ytQ`" -f `"b[height<=720][ext=mp4]/b[ext=mp4]/18/b`" --max-filesize 40M --no-playlist --no-warnings -o `"$outTpl`"" -WindowStyle Hidden -PassThru
+                            $pPy.WaitForExit(14000) | Out-Null
+                        } catch {}
+                    }
                 }
             }
 
@@ -316,7 +353,7 @@ while ($listener.IsListening) {
             $urlsArr = @()
             foreach ($cf in $cachedFiles) {
                 $encPath = [System.Uri]::EscapeDataString($cf.FullName)
-                $urlsArr += ('"http://localhost:48915/stock-cache?path=' + $encPath + '"')
+                $urlsArr += ('"http://localhost:48930/stock-cache?path=' + $encPath + '"')
             }
             $urlsArr += $remoteUrls
             $json = '{"ok":true,"urls":[' + ($urlsArr -join ',') + ']}'
@@ -332,7 +369,7 @@ while ($listener.IsListening) {
             $theme = [System.Uri]::UnescapeDataString(($req.QueryString["theme"] + ""))
             if ([string]::IsNullOrWhiteSpace($theme)) { $theme = "nature" }
             if (-not [string]::IsNullOrWhiteSpace($remoteUrl) -and $remoteUrl -match "^https?://") {
-                $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\CineFetchCache_v52\$theme"
+                $cacheDir = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\CineFetchCache_v53\$theme"
                 New-Item -ItemType Directory -Path $cacheDir -Force | Out-Null
 
                 $md5 = [System.Security.Cryptography.MD5]::Create()
@@ -343,7 +380,7 @@ while ($listener.IsListening) {
                 $tmpFile = $localFile + ".tmp"
 
                 if (-not (Test-Path -LiteralPath $localFile) -or (Get-Item -LiteralPath $localFile).Length -lt 50000) {
-                    $p = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s -A `"Mozilla/5.0 (Windows NT 10.0; Win64; x64) LunKengAutoVideo4K/5.2.0`" --max-time 12 `"$remoteUrl`" -o `"$tmpFile`"" -WindowStyle Hidden -Wait -PassThru
+                    $p = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s --max-time 12 `"$remoteUrl`" -o `"$tmpFile`"" -WindowStyle Hidden -Wait -PassThru
                     if ($p.ExitCode -eq 0 -and (Test-Path -LiteralPath $tmpFile) -and (Get-Item -LiteralPath $tmpFile).Length -gt 50000) {
                         Move-Item -LiteralPath $tmpFile -Destination $localFile -Force
                     } else {

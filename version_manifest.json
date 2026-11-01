@@ -1,14 +1,14 @@
 {
   "app_name": "LK_Auto_Edit_Video",
-  "latest_version": "v5.2.0",
-  "released_at": "2026-11-01T09:08:00Z",
-  "release_notes": "Bản v5.2.0: Tự động 100% tìm kiếm theo Chủ đề và tải trực tiếp 6+ file Video thật về ổ cứng bằng curl.exe + yt-dlp.exe trong dịch vụ nền Windows (khắc phục lỗi TLS 1.0 của WebClient và lỗi ghi đè URL), sau đó tự cắt các đoạn suộc <= 8s và ghép vào video hoàn chỉnh.",
+  "latest_version": "v5.4.0",
+  "released_at": "2026-11-01T09:49:00Z",
+  "release_notes": "Bản v5.4.0: Khắc phục triệt để lỗi Chromium chặn Private Network Access (origin 'null' -> loopback) khi gọi localhost từ file:/// bằng cơ chế tự động nâng cấp lên http://localhost:48930/app + cờ --disable-features=BlockInsecurePrivateNetworkRequests + kho 12 luồng Video dự phòng nội bộ.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "ab21f68e47d94f4879a2a56d271815ff3b4317fb86a8d918c1b174301ad92991"
+      "sha256": "ed1a5e5f4bd2fb692503f83608a27a4eda95ca0d725ec0390c68baa775ec5052"
     },
     {
       "path": "Lun_Keng_4K_Logo.ico",
@@ -18,12 +18,12 @@
     {
       "path": "LK_Auto_Edit_Video.hta",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
-      "sha256": "d8e563eca93069ca3b0e2190f627dc925f1133815505ebaf8eab857a6abc0a0d"
+      "sha256": "1da5eb50cd84dc8dd97518802c58ffbe366983018607da30dabb72b368908a9d"
     },
     {
       "path": "lk_local_bridge.ps1",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/lk_local_bridge.ps1",
-      "sha256": "bf1a4e9d09329fe5349faab9d7d092cb03f495fac9f1ce4a7547487b21e3216a"
+      "sha256": "158a06a96fe28010bd29815a67a7f9970d8708405c1ea5efc2e4d4b91e515b6a"
     }
   ]
 }
