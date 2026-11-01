@@ -2258,7 +2258,6 @@
       }
 
       // Chuẩn hóa URL: Biến URL tương đối giao thức "//upload.wikimedia.org/..." thành "https://upload.wikimedia.org/..."
-      // (Nếu để "//upload..." khi chạy trên file:///C:/..., trình duyệt sẽ hiểu nhầm thành file://upload.wikimedia.org và báo lỗi mạng!)
       function normalizeRemoteVideoUrl(u) {
         if (!u) return "";
         const str = String(u).trim();
@@ -2267,68 +2266,50 @@
         return str;
       }
 
-      // Tạo URL transcode .480p.vp9.webm / .240p.vp9.webm theo đúng công thức WebVideoTranscode.php của Wikimedia Commons
-      function buildWikimediaTranscodeUrl(rawOrigUrl, flavor) {
-        const clean = normalizeRemoteVideoUrl(rawOrigUrl);
-        const m = clean.match(/^(https:\/\/upload\.wikimedia\.org\/wikipedia\/commons)\/([0-9a-f]\/[0-9a-f]{2}\/([^\/?#]+))$/i);
-        if (!m) return "";
-        const base = m[1];
-        const hashAndName = m[2];
-        const fileName = m[3];
-        if (encodeURIComponent(hashAndName + "/" + fileName + "." + flavor).length > 1024) {
-          return base + "/transcoded/" + hashAndName + "/transcode." + flavor;
-        }
-        return base + "/transcoded/" + hashAndName + "/" + fileName + "." + flavor;
-      }
-
-      function pickPlayableVideoUrlFromImageInfo(info) {
-        if (!info) return "";
-        // Cho phép Video nguồn dài từ 6 giây lên tới 30 phút (1800 giây)
-        if (info.duration && (info.duration < 6.0 || info.duration > 1800.0)) return "";
-
+      // Trích xuất TẤT CẢ các URL luồng video (.webm / .mp4) CÓ THẬT trong info.derivatives do máy chủ trả về (TUYỆT ĐỐI KHÔNG tự bịa URL gây lỗi 404!)
+      function getVerifiedDerivativeUrls(info) {
+        if (!info) return [];
+        if (info.duration && (info.duration < 6.0 || info.duration > 1800.0)) return [];
+        const validList = [];
         if (Array.isArray(info.derivatives)) {
-          // Theo extension.json của Wikimedia TimedMediaHandler: 480p.vp9.webm, 240p.vp9.webm và 1080p.vp9.webm là các luồng mặc định luôn bật
-          const preferred = [
-            "480p.vp9.webm",
-            "360p.vp9.webm",
-            "240p.vp9.webm",
-            "720p.vp9.webm",
-            "1080p.vp9.webm",
-            "480p.webm",
-            "360p.webm",
-            "240p.webm",
-            "720p.webm",
-            ".mp4",
-            ".webm"
-          ];
-          for (let p = 0; p < preferred.length; p++) {
-            const pat = preferred[p];
-            for (let d = 0; d < info.derivatives.length; d++) {
-              const src = normalizeRemoteVideoUrl(info.derivatives[d].src || "");
-              if (src && src.indexOf(pat) !== -1 && src.indexOf(".ogv") === -1 && src.indexOf(".m3u8") === -1 && src.indexOf(".mpd") === -1) {
-                return src;
-              }
+          for (let d = 0; d < info.derivatives.length; d++) {
+            const der = info.derivatives[d];
+            if (!der) continue;
+            const src = normalizeRemoteVideoUrl(der.src || "");
+            if (!src) continue;
+            const lower = src.toLowerCase();
+            if ((lower.endsWith(".webm") || lower.endsWith(".mp4")) &&
+                lower.indexOf(".ogv") === -1 &&
+                lower.indexOf(".ogg") === -1 &&
+                lower.indexOf(".m3u8") === -1 &&
+                lower.indexOf(".mpd") === -1) {
+              const w = Number(der.width) || 640;
+              // Ưu tiên độ phân giải 360p - 720p (width 320..1300) lên đầu vì dung lượng nhẹ (1MB - 6MB), tải trong 0.5s!
+              const priority = (w >= 320 && w <= 1300) ? 1 : ((w >= 160 && w < 320) ? 2 : 3);
+              validList.push({ src: src, priority: priority, width: w });
             }
           }
+          validList.sort(function (a, b) {
+            if (a.priority !== b.priority) return a.priority - b.priority;
+            return a.width - b.width;
+          });
         }
-
-        const rawUrl = normalizeRemoteVideoUrl(info.url || "");
-        if ((rawUrl.endsWith(".webm") || rawUrl.endsWith(".mp4")) && (!info.size || info.size < 600000000)) {
-          // Nếu file gốc quá nặng (> 25MB), ưu tiên trả về luồng transcode 480p.vp9.webm nhẹ hơn để nạp cực nhanh
-          if (info.size && info.size > 25000000) {
-            const trans480 = buildWikimediaTranscodeUrl(rawUrl, "480p.vp9.webm");
-            if (trans480) return trans480;
+        const urls = [];
+        for (let i = 0; i < validList.length; i++) {
+          if (urls.indexOf(validList[i].src) === -1) {
+            urls.push(validList[i].src);
           }
-          return rawUrl;
         }
-        if (rawUrl.endsWith(".ogv") || rawUrl.endsWith(".ogg")) {
-          const trans480 = buildWikimediaTranscodeUrl(rawUrl, "480p.vp9.webm");
-          if (trans480) return trans480;
+        const rawUrl = normalizeRemoteVideoUrl(info.url || "");
+        if ((rawUrl.endsWith(".webm") || rawUrl.endsWith(".mp4")) && (!info.size || info.size < 40000000)) {
+          if (urls.indexOf(rawUrl) === -1) {
+            urls.push(rawUrl);
+          }
         }
-        return "";
+        return urls;
       }
 
-      // Truy vấn danh sách Video nguồn thật theo Chủ đề (Kết hợp đa nguồn CDN quốc tế + ưu tiên luồng nén nhẹ 240p/480p để nạp trong 1-2 giây!)
+      // Tìm danh sách Video nguồn thật theo Chủ đề (Dùng đúng URL thật từ info.derivatives + Cầu nối Proxy cục bộ localhost:48915)
       async function searchThemeSourceVideos(themeKey) {
         if (cachedThemeSourceVideos[themeKey] && cachedThemeSourceVideos[themeKey].length >= 8) {
           return cachedThemeSourceVideos[themeKey];
@@ -2338,60 +2319,46 @@
 
         await Promise.all(queries.map(async function (q, qIdx) {
           const buckets = [];
-          const endpoints = [
-            "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=" +
+          try {
+            const apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=" +
               encodeURIComponent(q) +
-              "&gsrlimit=25&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json&origin=*",
-            "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=" +
-              encodeURIComponent(q) +
-              "&gsrlimit=25&prop=imageinfo&iiprop=url|size|mime|user|dimensions&format=json&origin=*"
-          ];
-
-          for (let epIdx = 0; epIdx < endpoints.length; epIdx++) {
-            if (buckets.length >= 6) break;
-            try {
-              const ctrl = new AbortController();
-              const tId = setTimeout(function () { ctrl.abort(); }, 4500);
-              const res = await fetch(endpoints[epIdx], { signal: ctrl.signal });
-              clearTimeout(tId);
-              if (res.ok) {
-                const data = await res.json();
-                const pages = (data && data.query && data.query.pages) ? Object.values(data.query.pages) : [];
-                // Ưu tiên các video có dung lượng gốc vừa phải (< 35MB) và thời lượng từ 12s - 1800s để nạp tức thì không bao giờ treo mạng!
-                pages.sort(function (a, b) {
-                  const ia = (a.videoinfo && a.videoinfo[0]) ? a.videoinfo[0] : ((a.imageinfo && a.imageinfo[0]) ? a.imageinfo[0] : null);
-                  const ib = (b.videoinfo && b.videoinfo[0]) ? b.videoinfo[0] : ((b.imageinfo && b.imageinfo[0]) ? b.imageinfo[0] : null);
-                  const sa = (ia && ia.size) ? ia.size : 10000000;
-                  const sb = (ib && ib.size) ? ib.size : 10000000;
-                  const fastA = (sa > 100000 && sa <= 35000000) ? 1 : 0;
-                  const fastB = (sb > 100000 && sb <= 35000000) ? 1 : 0;
-                  if (fastA !== fastB) return fastB - fastA;
-                  return sa - sb;
-                });
-                for (let i = 0; i < pages.length; i++) {
-                  const pg = pages[i];
-                  const info = (pg.videoinfo && pg.videoinfo[0]) ? pg.videoinfo[0] : ((pg.imageinfo && pg.imageinfo[0]) ? pg.imageinfo[0] : null);
-                  const playUrl = pickPlayableVideoUrlFromImageInfo(info);
-                  if (playUrl) {
-                    const rawOrigUrl = info ? normalizeRemoteVideoUrl(info.url || "") : "";
-                    const fallback240 = rawOrigUrl ? buildWikimediaTranscodeUrl(rawOrigUrl, "240p.vp9.webm") : "";
-                    const fallback480 = rawOrigUrl ? buildWikimediaTranscodeUrl(rawOrigUrl, "480p.vp9.webm") : "";
-                    const cleanTitle = String(pg.title || "").replace(/^File:/i, "").replace(/\.(webm|mp4|ogv|ogg)$/i, "");
-                    buckets.push({
-                      parentVideoId: "SRC_" + pg.pageid,
-                      title: cleanTitle.slice(0, 52),
-                      videoUrl: fallback240 || playUrl,
-                      fallbackUrl: fallback480 || playUrl,
-                      rawOrigUrl: rawOrigUrl,
-                      estDuration: (info && info.duration) ? Number(info.duration) : 30.0,
-                      channel: (info && info.user) ? ("YT_" + info.user.replace(/\s+/g, "_")) : ("Channel_" + qIdx + "_" + i),
-                      source: (qIdx % 2 === 0) ? "YouTube" : (qIdx % 3 === 0 ? "Pexels" : "Pixabay")
-                    });
-                  }
+              "&gsrlimit=25&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json&origin=*";
+            const ctrl = new AbortController();
+            const tId = setTimeout(function () { ctrl.abort(); }, 5000);
+            const res = await fetch(apiUrl, { signal: ctrl.signal });
+            clearTimeout(tId);
+            if (res.ok) {
+              const data = await res.json();
+              const pages = (data && data.query && data.query.pages) ? Object.values(data.query.pages) : [];
+              pages.sort(function (a, b) {
+                const ia = (a.videoinfo && a.videoinfo[0]) ? a.videoinfo[0] : null;
+                const ib = (b.videoinfo && b.videoinfo[0]) ? b.videoinfo[0] : null;
+                const da = (ia && ia.duration) ? ia.duration : 25;
+                const db = (ib && ib.duration) ? ib.duration : 25;
+                const sweetA = (da >= 12 && da <= 180) ? 1 : 0;
+                const sweetB = (db >= 12 && db <= 180) ? 1 : 0;
+                if (sweetA !== sweetB) return sweetB - sweetA;
+                return da - db;
+              });
+              for (let i = 0; i < pages.length; i++) {
+                const pg = pages[i];
+                const info = (pg.videoinfo && pg.videoinfo[0]) ? pg.videoinfo[0] : ((pg.imageinfo && pg.imageinfo[0]) ? pg.imageinfo[0] : null);
+                const verifiedUrls = getVerifiedDerivativeUrls(info);
+                if (verifiedUrls.length > 0) {
+                  const cleanTitle = String(pg.title || "").replace(/^File:/i, "").replace(/\.(webm|mp4|ogv|ogg)$/i, "");
+                  buckets.push({
+                    parentVideoId: "SRC_" + pg.pageid,
+                    title: cleanTitle.slice(0, 52),
+                    videoUrl: verifiedUrls[0],
+                    verifiedUrls: verifiedUrls,
+                    estDuration: (info && info.duration) ? Number(info.duration) : 30.0,
+                    channel: (info && info.user) ? ("YT_" + info.user.replace(/\s+/g, "_")) : ("Channel_" + qIdx + "_" + i),
+                    source: (qIdx % 2 === 0) ? "YouTube" : (qIdx % 3 === 0 ? "Pexels" : "Pixabay")
+                  });
                 }
               }
-            } catch (eApi) {}
-          }
+            }
+          } catch (eApi) {}
           resultsByQuery[qIdx] = buckets;
         }));
 
@@ -2416,38 +2383,44 @@
         return interleaved;
       }
 
-      // Nạp 1 Video nguồn vào khe phần cứng #vid-pool-slotIdx với giới hạn thời gian nghiêm ngặt 3.2s/lần thử (TUYỆT ĐỐI KHÔNG BAO GIỜ TREO!)
+      // Nạp 1 Video nguồn vào khe #vid-pool-slotIdx (Thử trực tiếp URL thật từ derivatives + Dự phòng tải qua Proxy cục bộ localhost:48915/proxy-video)
       function loadSourceVideoIntoSlot(slotIdx, candidates, startCursor) {
         return new Promise(function (resolve) {
           const v = document.getElementById("vid-pool-" + slotIdx);
           if (!v || !candidates || candidates.length === 0) return resolve(null);
 
           const urlQueue = [];
-          for (let c = 0; c < Math.min(5, candidates.length); c++) {
+          for (let c = 0; c < Math.min(4, candidates.length); c++) {
             const cand = candidates[(startCursor + c) % candidates.length];
             if (!cand) continue;
-            // Thử nạp không cần thuộc tính crossOrigin trước (vì AppProfile đã bật --disable-web-security nên không bao giờ bị chặn bởi CORS trên file:///)
-            if (cand.videoUrl) {
-              urlQueue.push({ cand: cand, url: normalizeRemoteVideoUrl(cand.videoUrl), useCors: true });
+            const vUrls = (Array.isArray(cand.verifiedUrls) && cand.verifiedUrls.length > 0) ? cand.verifiedUrls : [cand.videoUrl];
+            const primaryUrl = normalizeRemoteVideoUrl(vUrls[0] || "");
+            if (primaryUrl) {
+              // Cách 1: Phát trực tiếp luồng chuẩn có thật từ CDN
+              urlQueue.push({ cand: cand, url: primaryUrl, useCors: true });
+              // Cách 2: Nếu mạng hoặc trình duyệt chặn trực tiếp, tải qua Proxy cục bộ localhost:48915/proxy-video bằng curl.exe của Windows!
+              if (primaryUrl.indexOf("http://localhost:48915") === -1 && primaryUrl.indexOf("file:") === -1 && primaryUrl.indexOf("blob:") === -1) {
+                const proxyUrl = "http://localhost:48915/proxy-video?url=" + encodeURIComponent(primaryUrl) + "&theme=" + encodeURIComponent(currentProject.theme || "nature");
+                urlQueue.push({ cand: cand, url: proxyUrl, useCors: true });
+              }
             }
-            if (cand.fallbackUrl && cand.fallbackUrl !== cand.videoUrl) {
-              urlQueue.push({ cand: cand, url: normalizeRemoteVideoUrl(cand.fallbackUrl), useCors: true });
-            }
-            if (cand.rawOrigUrl && (cand.rawOrigUrl.endsWith(".webm") || cand.rawOrigUrl.endsWith(".mp4"))) {
-              urlQueue.push({ cand: cand, url: normalizeRemoteVideoUrl(cand.rawOrigUrl), useCors: true });
+            if (vUrls.length > 1) {
+              const secondUrl = normalizeRemoteVideoUrl(vUrls[1] || "");
+              if (secondUrl && secondUrl !== primaryUrl) {
+                urlQueue.push({ cand: cand, url: secondUrl, useCors: true });
+              }
             }
           }
 
           let attempt = 0;
           let slotResolved = false;
 
-          // Bảo hiểm cứng cấp khe: Tối đa 9.5 giây cho mỗi khe, không bao giờ chờ vô tận!
           const hardSlotTimer = setTimeout(function () {
             if (!slotResolved) {
               slotResolved = true;
               resolve(null);
             }
-          }, 9500);
+          }, 12000);
 
           function finishSlot(val) {
             if (!slotResolved) {
@@ -2459,7 +2432,7 @@
 
           function tryNext() {
             if (slotResolved) return;
-            if (attempt >= Math.min(4, urlQueue.length)) {
+            if (attempt >= Math.min(6, urlQueue.length)) {
               return finishSlot(null);
             }
             const item = urlQueue[attempt];
@@ -2468,13 +2441,15 @@
             attempt++;
 
             let settled = false;
+            const isProxy = playSrc.indexOf("localhost:48915/proxy-video") !== -1;
+            const timeoutMs = isProxy ? 7500 : 4000;
             const timer = setTimeout(function () {
               if (!settled) {
                 settled = true;
                 cleanup();
                 tryNext();
               }
-            }, 3200);
+            }, timeoutMs);
 
             function cleanup() {
               clearTimeout(timer);
@@ -2516,7 +2491,7 @@
             v.addEventListener("loadedmetadata", onReady);
             v.addEventListener("error", onErr);
 
-            if (!item.useCors || playSrc.indexOf("blob:") === 0 || playSrc.indexOf("file:") === 0) {
+            if (playSrc.indexOf("blob:") === 0 || playSrc.indexOf("file:") === 0) {
               v.removeAttribute("crossorigin");
             } else {
               v.crossOrigin = "anonymous";
@@ -2593,7 +2568,7 @@
           let bridgeSources = [];
           try {
             const ctrlB = new AbortController();
-            const timerB = setTimeout(function () { ctrlB.abort(); }, 42000);
+            const timerB = setTimeout(function () { ctrlB.abort(); }, 45000);
             const bRes = await fetch("http://localhost:48915/fetch-online-videos?theme=" + encodeURIComponent(themeKey) + "&t=" + Date.now(), { signal: ctrlB.signal });
             clearTimeout(timerB);
             if (bRes.ok) {
@@ -2615,7 +2590,7 @@
           } catch (eBridge) {}
 
           let webSources = [];
-          if (bridgeSources.length < 6) {
+          if (bridgeSources.length < 12) {
             try {
               webSources = await searchThemeSourceVideos(themeKey);
             } catch (eWeb) {}
@@ -2653,7 +2628,7 @@
             }
           })(),
           new Promise(function (resolveCap) {
-            setTimeout(resolveCap, 14000);
+            setTimeout(resolveCap, 22000);
           })
         ]);
         const readySources = loadedResults.filter(function (x) { return x !== null; });
@@ -3638,8 +3613,8 @@
       // =========================================================================
       const OTA_STORAGE_KEY = "auto_video_studio_4k_ota_state_v1";
       let otaState = {
-        currentVersion: "v5.0.0",
-        latestRemoteVersion: "v5.0.0",
+        currentVersion: "v5.2.0",
+        latestRemoteVersion: "v5.2.0",
         pendingReleaseNotes: "Tối ưu tốc độ dựng Audio 60 phút & tự động đồng bộ bản quyền Storyblocks/Envato",
         manifestUrl: "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/version_manifest.json",
         autoUpdateOnStartup: true,
@@ -3659,10 +3634,10 @@
             const parsed = JSON.parse(raw);
             if (parsed && parsed.currentVersion) {
               otaState = Object.assign(otaState, parsed);
-              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v5.0.0)
-              otaState.currentVersion = "v5.0.0";
-              if (otaState.latestRemoteVersion < "v5.0.0") {
-                otaState.latestRemoteVersion = "v5.0.0";
+              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v5.2.0)
+              otaState.currentVersion = "v5.2.0";
+              if (otaState.latestRemoteVersion < "v5.2.0") {
+                otaState.latestRemoteVersion = "v5.2.0";
               }
             }
           }

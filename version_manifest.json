@@ -1,14 +1,14 @@
 {
   "app_name": "LK_Auto_Edit_Video",
-  "latest_version": "v5.0.0",
-  "released_at": "2026-11-01T08:32:00Z",
-  "release_notes": "Bản v5.0.0: Đưa toàn bộ nhân quét & tải Video thật của CineFetch_AI (yt-dlp.exe YouTube + bộ quét MP4 Envato Elements) vào dịch vụ nền lk_local_bridge.ps1 kèm luồng phát HTTP 206 Range từ ổ cứng; gỡ cờ --disable-web-security gây hiện thanh cảnh báo trắng.",
+  "latest_version": "v5.2.0",
+  "released_at": "2026-11-01T09:08:00Z",
+  "release_notes": "Bản v5.2.0: Tự động 100% tìm kiếm theo Chủ đề và tải trực tiếp 6+ file Video thật về ổ cứng bằng curl.exe + yt-dlp.exe trong dịch vụ nền Windows (khắc phục lỗi TLS 1.0 của WebClient và lỗi ghi đè URL), sau đó tự cắt các đoạn suộc <= 8s và ghép vào video hoàn chỉnh.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "f035e13bad32d2f2130ec1b36fbc6ea3d758ac3087146da74a5e710ec4acf662"
+      "sha256": "ab21f68e47d94f4879a2a56d271815ff3b4317fb86a8d918c1b174301ad92991"
     },
     {
       "path": "Lun_Keng_4K_Logo.ico",
@@ -18,12 +18,12 @@
     {
       "path": "LK_Auto_Edit_Video.hta",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
-      "sha256": "bdfe05ea427511e6d854f91ebd3827c212314e793445c7b7772242112df103e7"
+      "sha256": "d8e563eca93069ca3b0e2190f627dc925f1133815505ebaf8eab857a6abc0a0d"
     },
     {
       "path": "lk_local_bridge.ps1",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/lk_local_bridge.ps1",
-      "sha256": "bf79941ae80718bc0aa36a3488994d1395fb7cddf33918dd0edceaff9151fa99"
+      "sha256": "bf1a4e9d09329fe5349faab9d7d092cb03f495fac9f1ce4a7547487b21e3216a"
     }
   ]
 }
