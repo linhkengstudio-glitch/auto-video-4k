@@ -63,8 +63,39 @@ while ($listener.IsListening) {
 
         $path = $req.Url.AbsolutePath
 
+                if ($path -eq "/memory-vault") {
+            $vaultPath = Join-Path $env:LOCALAPPDATA "LunKengAutoVideo4K\system_memory_vault.json"
+            if ($req.HttpMethod -eq "POST") {
+                $sr = New-Object System.IO.StreamReader($req.InputStream, [System.Text.Encoding]::UTF8)
+                $bodyStr = $sr.ReadToEnd()
+                $sr.Close()
+                if (-not [string]::IsNullOrWhiteSpace($bodyStr)) {
+                    [System.IO.File]::WriteAllText($vaultPath, $bodyStr, [System.Text.Encoding]::UTF8)
+                }
+                $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true}')
+                $res.ContentType = "application/json; charset=utf-8"
+                $res.OutputStream.Write($buf, 0, $buf.Length)
+                $res.Close()
+                continue
+            } else {
+                if (Test-Path -LiteralPath $vaultPath) {
+                    $jsonBytes = [System.IO.File]::ReadAllBytes($vaultPath)
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $res.OutputStream.Write($jsonBytes, 0, $jsonBytes.Length)
+                    $res.Close()
+                    continue
+                } else {
+                    $buf = [System.Text.Encoding]::UTF8.GetBytes('{"usedClipIds":{},"videoHistory":[]}')
+                    $res.ContentType = "application/json; charset=utf-8"
+                    $res.OutputStream.Write($buf, 0, $buf.Length)
+                    $res.Close()
+                    continue
+                }
+            }
+        }
+
         if ($path -eq "/ping") {
-            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"4.5.0"}')
+            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"4.8.0"}')
             $res.ContentType = "application/json; charset=utf-8"
             $res.OutputStream.Write($buf, 0, $buf.Length)
             $res.Close()
@@ -125,23 +156,26 @@ while ($listener.IsListening) {
                 $qFile = $qFile + ".mp4"
             }
             $fullOutPath = Join-Path $qFolder $qFile
-            $ms = New-Object System.IO.MemoryStream
-            $req.InputStream.CopyTo($ms)
-            $rawBytes = $ms.ToArray()
-            $ms.Close()
+            $tmpStreamFile = $fullOutPath + ".part"
+            $fs = [System.IO.File]::Create($tmpStreamFile)
+            $req.InputStream.CopyTo($fs)
+            $fs.Flush()
+            $fs.Close()
 
-            # Neu may co ffmpeg va luong ghi la WebM (0x1A 0x45 0xDF 0xA3) thi tu dong chuyen sang MP4 chuan H.264, neu da la MP4 thi ghi thang!
+            $headerBytes = New-Object byte[] 4
+            $fsRead = [System.IO.File]::OpenRead($tmpStreamFile)
+            $readCount = $fsRead.Read($headerBytes, 0, 4)
+            $fsRead.Close()
+
             $ffCmd = Get-Command ffmpeg -ErrorAction SilentlyContinue
-            if ($null -ne $ffCmd -and $rawBytes.Length -gt 4 -and $rawBytes[0] -eq 0x1A -and $rawBytes[1] -eq 0x45) {
-                $tmpWebm = $fullOutPath + ".tmp.webm"
-                [System.IO.File]::WriteAllBytes($tmpWebm, $rawBytes)
-                Start-Process -FilePath "ffmpeg" -ArgumentList "-y -i `"$tmpWebm`" -c:v libx264 -preset ultrafast -crf 22 -c:a aac `"$fullOutPath`"" -WindowStyle Hidden -Wait
-                Remove-Item -LiteralPath $tmpWebm -Force -ErrorAction SilentlyContinue
+            if ($null -ne $ffCmd -and $readCount -ge 2 -and $headerBytes[0] -eq 0x1A -and $headerBytes[1] -eq 0x45) {
+                Start-Process -FilePath "ffmpeg" -ArgumentList "-y -i `"$tmpStreamFile`" -c:v libx264 -preset ultrafast -crf 23 -c:a aac `"$fullOutPath`"" -WindowStyle Hidden -Wait
+                Remove-Item -LiteralPath $tmpStreamFile -Force -ErrorAction SilentlyContinue
                 if (-not (Test-Path -LiteralPath $fullOutPath)) {
-                    [System.IO.File]::WriteAllBytes($fullOutPath, $rawBytes)
+                    Move-Item -LiteralPath $tmpStreamFile -Destination $fullOutPath -Force -ErrorAction SilentlyContinue
                 }
             } else {
-                [System.IO.File]::WriteAllBytes($fullOutPath, $rawBytes)
+                Move-Item -LiteralPath $tmpStreamFile -Destination $fullOutPath -Force
             }
 
             $escapedOut = $fullOutPath.Replace('\', '\\').Replace('"', '\"')
@@ -190,7 +224,7 @@ while ($listener.IsListening) {
             $apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=$encQ&gsrlimit=35&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json"
             try {
                 $wc = New-Object System.Net.WebClient
-                $wc.Headers.Add("User-Agent", "LunKengAutoVideo4K/4.5.0 (Windows NT 10.0; Win64; x64)")
+                $wc.Headers.Add("User-Agent", "LunKengAutoVideo4K/4.8.0 (Windows NT 10.0; Win64; x64)")
                 $wc.Encoding = [System.Text.Encoding]::UTF8
                 $apiJson = $wc.DownloadString($apiUrl) | ConvertFrom-Json
                 if ($null -ne $apiJson.query -and $null -ne $apiJson.query.pages) {
@@ -205,7 +239,7 @@ while ($listener.IsListening) {
                             if ($null -ne $info.derivatives) {
                                 foreach ($d in $info.derivatives) {
                                     if ($d.src -and ($d.src -match "480p\.vp9\.webm" -or $d.src -match "360p\.vp9\.webm" -or $d.src -match "720p\.vp9\.webm" -or $d.src -match "480p\.webm")) {
-                                        $vidUrl = $d.src
+                                        if ($d.src.StartsWith("//")) { $vidUrl = "https:" + $d.src } else { $vidUrl = $d.src }
                                         break
                                     }
                                 }
@@ -219,7 +253,7 @@ while ($listener.IsListening) {
                                     $outVid = Join-Path $cacheDir ("source_v45_" + $dlIdx + $ext)
                                     $tmpVid = $outVid + ".tmp"
                                     if (-not (Test-Path -LiteralPath $outVid)) {
-                                        $proc = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s -A `"LunKengAutoVideo4K/4.5.0`" --max-time 20 `"$vidUrl`" -o `"$tmpVid`"" -WindowStyle Hidden -Wait -PassThru
+                                        $proc = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s -A `"LunKengAutoVideo4K/4.8.0`" --max-time 20 `"$vidUrl`" -o `"$tmpVid`"" -WindowStyle Hidden -Wait -PassThru
                                         if ($proc.ExitCode -eq 0 -and (Test-Path -LiteralPath $tmpVid) -and (Get-Item -LiteralPath $tmpVid).Length -gt 50000) {
                                             Move-Item -LiteralPath $tmpVid -Destination $outVid -Force
                                         } else {

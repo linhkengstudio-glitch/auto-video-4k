@@ -1107,18 +1107,41 @@
               systemMemory.videoHistory = Array.isArray(parsed.videoHistory) ? parsed.videoHistory : [];
             }
           }
-        } catch (err) {
-          // Fallback in-memory if localStorage is restricted
-        }
+        } catch (err) {}
+        try {
+          fetch("http://localhost:48915/memory-vault?t=" + Date.now())
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (diskMem) {
+              if (diskMem && diskMem.usedClipIds && Object.keys(diskMem.usedClipIds).length > Object.keys(systemMemory.usedClipIds).length) {
+                systemMemory.usedClipIds = diskMem.usedClipIds;
+                systemMemory.videoHistory = Array.isArray(diskMem.videoHistory) ? diskMem.videoHistory : systemMemory.videoHistory;
+                try { localStorage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(systemMemory)); } catch (eLs) {}
+                updateMemoryCountersUI();
+                renderMemoryHistoryLists();
+              } else if (Object.keys(systemMemory.usedClipIds).length > 0) {
+                fetch("http://localhost:48915/memory-vault", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(systemMemory)
+                }).catch(function () {});
+              }
+            })
+            .catch(function () {});
+        } catch (eDiskLoad) {}
         updateMemoryCountersUI();
       }
 
       function saveSystemMemory() {
         try {
           localStorage.setItem(MEMORY_STORAGE_KEY, JSON.stringify(systemMemory));
-        } catch (err) {
-          // Keep in memory
-        }
+        } catch (err) {}
+        try {
+          fetch("http://localhost:48915/memory-vault", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(systemMemory)
+          }).catch(function () {});
+        } catch (eDiskSave) {}
         updateMemoryCountersUI();
       }
 
@@ -2234,32 +2257,80 @@
         lastPreSeekTargetBySlot = {};
       }
 
+      // Chuẩn hóa URL: Biến URL tương đối giao thức "//upload.wikimedia.org/..." thành "https://upload.wikimedia.org/..."
+      // (Nếu để "//upload..." khi chạy trên file:///C:/..., trình duyệt sẽ hiểu nhầm thành file://upload.wikimedia.org và báo lỗi mạng!)
+      function normalizeRemoteVideoUrl(u) {
+        if (!u) return "";
+        const str = String(u).trim();
+        if (str.indexOf("//") === 0) return "https:" + str;
+        if (str.indexOf("/") === 0) return "https://commons.wikimedia.org" + str;
+        return str;
+      }
+
+      // Tạo URL transcode .480p.vp9.webm / .240p.vp9.webm theo đúng công thức WebVideoTranscode.php của Wikimedia Commons
+      function buildWikimediaTranscodeUrl(rawOrigUrl, flavor) {
+        const clean = normalizeRemoteVideoUrl(rawOrigUrl);
+        const m = clean.match(/^(https:\/\/upload\.wikimedia\.org\/wikipedia\/commons)\/([0-9a-f]\/[0-9a-f]{2}\/([^\/?#]+))$/i);
+        if (!m) return "";
+        const base = m[1];
+        const hashAndName = m[2];
+        const fileName = m[3];
+        if (encodeURIComponent(hashAndName + "/" + fileName + "." + flavor).length > 1024) {
+          return base + "/transcoded/" + hashAndName + "/transcode." + flavor;
+        }
+        return base + "/transcoded/" + hashAndName + "/" + fileName + "." + flavor;
+      }
+
       function pickPlayableVideoUrlFromImageInfo(info) {
         if (!info) return "";
-        // Cho phép Video nguồn dài tối đa lên tới 30 phút (1800 giây) và tối thiểu >= 8 giây
-        if (info.duration && (info.duration < 8.0 || info.duration > 1800.0)) return "";
+        // Cho phép Video nguồn dài từ 6 giây lên tới 30 phút (1800 giây)
+        if (info.duration && (info.duration < 6.0 || info.duration > 1800.0)) return "";
+
         if (Array.isArray(info.derivatives)) {
-          const preferred = ["480p.vp9.webm", "360p.vp9.webm", "720p.vp9.webm", "480p.webm", "360p.webm", "720p.webm", ".mp4"];
+          // Theo extension.json của Wikimedia TimedMediaHandler: 480p.vp9.webm, 240p.vp9.webm và 1080p.vp9.webm là các luồng mặc định luôn bật
+          const preferred = [
+            "480p.vp9.webm",
+            "360p.vp9.webm",
+            "240p.vp9.webm",
+            "720p.vp9.webm",
+            "1080p.vp9.webm",
+            "480p.webm",
+            "360p.webm",
+            "240p.webm",
+            "720p.webm",
+            ".mp4",
+            ".webm"
+          ];
           for (let p = 0; p < preferred.length; p++) {
             const pat = preferred[p];
             for (let d = 0; d < info.derivatives.length; d++) {
-              const src = info.derivatives[d].src || "";
-              if (src && src.indexOf(pat) !== -1 && src.indexOf(".ogv") === -1) {
+              const src = normalizeRemoteVideoUrl(info.derivatives[d].src || "");
+              if (src && src.indexOf(pat) !== -1 && src.indexOf(".ogv") === -1 && src.indexOf(".m3u8") === -1 && src.indexOf(".mpd") === -1) {
                 return src;
               }
             }
           }
         }
-        const rawUrl = info.url || "";
+
+        const rawUrl = normalizeRemoteVideoUrl(info.url || "");
         if ((rawUrl.endsWith(".webm") || rawUrl.endsWith(".mp4")) && (!info.size || info.size < 600000000)) {
+          // Nếu file gốc quá nặng (> 25MB), ưu tiên trả về luồng transcode 480p.vp9.webm nhẹ hơn để nạp cực nhanh
+          if (info.size && info.size > 25000000) {
+            const trans480 = buildWikimediaTranscodeUrl(rawUrl, "480p.vp9.webm");
+            if (trans480) return trans480;
+          }
           return rawUrl;
+        }
+        if (rawUrl.endsWith(".ogv") || rawUrl.endsWith(".ogg")) {
+          const trans480 = buildWikimediaTranscodeUrl(rawUrl, "480p.vp9.webm");
+          if (trans480) return trans480;
         }
         return "";
       }
 
-      // Tìm danh sách Video nguồn thật theo Chủ đề (ưu tiên video nguồn dài từ 15s - 180s để cắt được nhiều suộc ở các vị trí khác nhau!)
+      // Truy vấn danh sách Video nguồn thật theo Chủ đề (Kết hợp đa nguồn CDN quốc tế + ưu tiên luồng nén nhẹ 240p/480p để nạp trong 1-2 giây!)
       async function searchThemeSourceVideos(themeKey) {
-        if (cachedThemeSourceVideos[themeKey] && cachedThemeSourceVideos[themeKey].length >= 10) {
+        if (cachedThemeSourceVideos[themeKey] && cachedThemeSourceVideos[themeKey].length >= 8) {
           return cachedThemeSourceVideos[themeKey];
         }
         const queries = THEME_MULTI_SEARCH_QUERIES[themeKey] || THEME_MULTI_SEARCH_QUERIES.nature;
@@ -2267,40 +2338,60 @@
 
         await Promise.all(queries.map(async function (q, qIdx) {
           const buckets = [];
-          try {
-            const apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=" +
+          const endpoints = [
+            "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=" +
               encodeURIComponent(q) +
-              "&gsrlimit=25&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json&origin=*";
-            const res = await fetch(apiUrl);
-            if (res.ok) {
-              const data = await res.json();
-              const pages = (data && data.query && data.query.pages) ? Object.values(data.query.pages) : [];
-              // Ưu tiên các video nguồn có thời lượng dài (lên tới 30 phút = 1800s) để cắt được nhiều suộc ở các vị trí khác nhau
-              pages.sort(function (a, b) {
-                const ia = (a.videoinfo && a.videoinfo[0]) ? a.videoinfo[0] : ((a.imageinfo && a.imageinfo[0]) ? a.imageinfo[0] : null);
-                const ib = (b.videoinfo && b.videoinfo[0]) ? b.videoinfo[0] : ((b.imageinfo && b.imageinfo[0]) ? b.imageinfo[0] : null);
-                const da = (ia && ia.duration) ? ia.duration : 20;
-                const db = (ib && ib.duration) ? ib.duration : 20;
-                return Math.min(1800, db) - Math.min(1800, da);
-              });
-              for (let i = 0; i < pages.length; i++) {
-                const pg = pages[i];
-                const info = (pg.videoinfo && pg.videoinfo[0]) ? pg.videoinfo[0] : ((pg.imageinfo && pg.imageinfo[0]) ? pg.imageinfo[0] : null);
-                const playUrl = pickPlayableVideoUrlFromImageInfo(info);
-                if (playUrl) {
-                  const cleanTitle = String(pg.title || "").replace(/^File:/i, "").replace(/\.(webm|mp4|ogv|ogg)$/i, "");
-                  buckets.push({
-                    parentVideoId: "SRC_" + pg.pageid,
-                    title: cleanTitle.slice(0, 52),
-                    videoUrl: playUrl,
-                    estDuration: (info && info.duration) ? Number(info.duration) : 30.0,
-                    channel: (info && info.user) ? ("YT_" + info.user.replace(/\s+/g, "_")) : ("Channel_" + qIdx + "_" + i),
-                    source: (qIdx % 2 === 0) ? "YouTube" : (qIdx % 3 === 0 ? "Pexels" : "Pixabay")
-                  });
+              "&gsrlimit=25&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json&origin=*",
+            "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=" +
+              encodeURIComponent(q) +
+              "&gsrlimit=25&prop=imageinfo&iiprop=url|size|mime|user|dimensions&format=json&origin=*"
+          ];
+
+          for (let epIdx = 0; epIdx < endpoints.length; epIdx++) {
+            if (buckets.length >= 6) break;
+            try {
+              const ctrl = new AbortController();
+              const tId = setTimeout(function () { ctrl.abort(); }, 4500);
+              const res = await fetch(endpoints[epIdx], { signal: ctrl.signal });
+              clearTimeout(tId);
+              if (res.ok) {
+                const data = await res.json();
+                const pages = (data && data.query && data.query.pages) ? Object.values(data.query.pages) : [];
+                // Ưu tiên các video có dung lượng gốc vừa phải (< 35MB) và thời lượng từ 12s - 1800s để nạp tức thì không bao giờ treo mạng!
+                pages.sort(function (a, b) {
+                  const ia = (a.videoinfo && a.videoinfo[0]) ? a.videoinfo[0] : ((a.imageinfo && a.imageinfo[0]) ? a.imageinfo[0] : null);
+                  const ib = (b.videoinfo && b.videoinfo[0]) ? b.videoinfo[0] : ((b.imageinfo && b.imageinfo[0]) ? b.imageinfo[0] : null);
+                  const sa = (ia && ia.size) ? ia.size : 10000000;
+                  const sb = (ib && ib.size) ? ib.size : 10000000;
+                  const fastA = (sa > 100000 && sa <= 35000000) ? 1 : 0;
+                  const fastB = (sb > 100000 && sb <= 35000000) ? 1 : 0;
+                  if (fastA !== fastB) return fastB - fastA;
+                  return sa - sb;
+                });
+                for (let i = 0; i < pages.length; i++) {
+                  const pg = pages[i];
+                  const info = (pg.videoinfo && pg.videoinfo[0]) ? pg.videoinfo[0] : ((pg.imageinfo && pg.imageinfo[0]) ? pg.imageinfo[0] : null);
+                  const playUrl = pickPlayableVideoUrlFromImageInfo(info);
+                  if (playUrl) {
+                    const rawOrigUrl = info ? normalizeRemoteVideoUrl(info.url || "") : "";
+                    const fallback240 = rawOrigUrl ? buildWikimediaTranscodeUrl(rawOrigUrl, "240p.vp9.webm") : "";
+                    const fallback480 = rawOrigUrl ? buildWikimediaTranscodeUrl(rawOrigUrl, "480p.vp9.webm") : "";
+                    const cleanTitle = String(pg.title || "").replace(/^File:/i, "").replace(/\.(webm|mp4|ogv|ogg)$/i, "");
+                    buckets.push({
+                      parentVideoId: "SRC_" + pg.pageid,
+                      title: cleanTitle.slice(0, 52),
+                      videoUrl: fallback240 || playUrl,
+                      fallbackUrl: fallback480 || playUrl,
+                      rawOrigUrl: rawOrigUrl,
+                      estDuration: (info && info.duration) ? Number(info.duration) : 30.0,
+                      channel: (info && info.user) ? ("YT_" + info.user.replace(/\s+/g, "_")) : ("Channel_" + qIdx + "_" + i),
+                      source: (qIdx % 2 === 0) ? "YouTube" : (qIdx % 3 === 0 ? "Pexels" : "Pixabay")
+                    });
+                  }
                 }
               }
-            }
-          } catch (eApi) {}
+            } catch (eApi) {}
+          }
           resultsByQuery[qIdx] = buckets;
         }));
 
@@ -2325,46 +2416,56 @@
         return interleaved;
       }
 
-      let blobUrlCacheByRemoteUrl = {};
-
-      // Nạp 1 Video nguồn thật vào bộ nhớ RAM (Blob URL) và đưa vào khe giải mã #vid-pool-slotIdx để cắt nhiều đoạn suộc mượt tức thì!
+      // Nạp 1 Video nguồn vào khe phần cứng #vid-pool-slotIdx với giới hạn thời gian nghiêm ngặt 3.2s/lần thử (TUYỆT ĐỐI KHÔNG BAO GIỜ TREO!)
       function loadSourceVideoIntoSlot(slotIdx, candidates, startCursor) {
         return new Promise(function (resolve) {
           const v = document.getElementById("vid-pool-" + slotIdx);
           if (!v || !candidates || candidates.length === 0) return resolve(null);
 
-          let attempt = 0;
-          async function tryNext() {
-            if (attempt >= Math.min(8, candidates.length)) {
-              return resolve(null);
+          const urlQueue = [];
+          for (let c = 0; c < Math.min(5, candidates.length); c++) {
+            const cand = candidates[(startCursor + c) % candidates.length];
+            if (!cand) continue;
+            // Thử nạp không cần thuộc tính crossOrigin trước (vì AppProfile đã bật --disable-web-security nên không bao giờ bị chặn bởi CORS trên file:///)
+            if (cand.videoUrl) {
+              urlQueue.push({ cand: cand, url: normalizeRemoteVideoUrl(cand.videoUrl), useCors: true });
             }
-            const cand = candidates[(startCursor + attempt) % candidates.length];
-            attempt++;
+            if (cand.fallbackUrl && cand.fallbackUrl !== cand.videoUrl) {
+              urlQueue.push({ cand: cand, url: normalizeRemoteVideoUrl(cand.fallbackUrl), useCors: true });
+            }
+            if (cand.rawOrigUrl && (cand.rawOrigUrl.endsWith(".webm") || cand.rawOrigUrl.endsWith(".mp4"))) {
+              urlQueue.push({ cand: cand, url: normalizeRemoteVideoUrl(cand.rawOrigUrl), useCors: true });
+            }
+          }
 
-            let playSrc = cand.videoUrl;
-            // Tải luồng video transcode về bộ nhớ RAM (Blob) để tua (seek) cắt nhiều đoạn suộc trong 0ms và không bao giờ lỗi CORS trên file:///
-            if (playSrc.indexOf("http") === 0) {
-              if (blobUrlCacheByRemoteUrl[playSrc]) {
-                playSrc = blobUrlCacheByRemoteUrl[playSrc];
-              } else {
-                try {
-                  const ctrl = new AbortController();
-                  const fetchTimer = setTimeout(function () { ctrl.abort(); }, 12000);
-                  const resp = await fetch(playSrc, { signal: ctrl.signal });
-                  clearTimeout(fetchTimer);
-                  if (resp.ok) {
-                    const blob = await resp.blob();
-                    if (blob.size > 25000) {
-                      const bUrl = URL.createObjectURL(blob);
-                      blobUrlCacheByRemoteUrl[playSrc] = bUrl;
-                      playSrc = bUrl;
-                    }
-                  }
-                } catch (eFetchBlob) {
-                  // Nếu fetch Blob vượt thời gian thì thử phát trực tiếp qua luồng <video crossorigin="anonymous">
-                }
-              }
+          let attempt = 0;
+          let slotResolved = false;
+
+          // Bảo hiểm cứng cấp khe: Tối đa 9.5 giây cho mỗi khe, không bao giờ chờ vô tận!
+          const hardSlotTimer = setTimeout(function () {
+            if (!slotResolved) {
+              slotResolved = true;
+              resolve(null);
             }
+          }, 9500);
+
+          function finishSlot(val) {
+            if (!slotResolved) {
+              slotResolved = true;
+              clearTimeout(hardSlotTimer);
+              resolve(val);
+            }
+          }
+
+          function tryNext() {
+            if (slotResolved) return;
+            if (attempt >= Math.min(4, urlQueue.length)) {
+              return finishSlot(null);
+            }
+            const item = urlQueue[attempt];
+            const cand = item.cand;
+            const playSrc = item.url;
+            attempt++;
 
             let settled = false;
             const timer = setTimeout(function () {
@@ -2373,24 +2474,25 @@
                 cleanup();
                 tryNext();
               }
-            }, 10000);
+            }, 3200);
 
             function cleanup() {
               clearTimeout(timer);
               v.removeEventListener("loadeddata", onReady);
               v.removeEventListener("canplay", onReady);
+              v.removeEventListener("loadedmetadata", onReady);
               v.removeEventListener("error", onErr);
             }
 
             function onReady() {
-              if (settled) return;
-              if (v.videoWidth > 0 && v.readyState >= 2) {
+              if (settled || slotResolved) return;
+              if (v.videoWidth > 0 && v.readyState >= 1) {
                 settled = true;
                 cleanup();
                 const realDur = (v.duration && isFinite(v.duration) && v.duration > 5)
-                  ? v.duration
-                  : (cand.estDuration || 32.0);
-                resolve({
+                  ? Math.min(1800.0, v.duration)
+                  : Math.min(1800.0, cand.estDuration || 32.0);
+                finishSlot({
                   slotIdx: slotIdx,
                   parentVideoId: cand.parentVideoId || ("SRC_SLOT_" + slotIdx),
                   title: cand.title || ("Video Nguồn #" + (slotIdx + 1)),
@@ -2403,7 +2505,7 @@
             }
 
             function onErr() {
-              if (settled) return;
+              if (settled || slotResolved) return;
               settled = true;
               cleanup();
               tryNext();
@@ -2411,15 +2513,17 @@
 
             v.addEventListener("loadeddata", onReady);
             v.addEventListener("canplay", onReady);
+            v.addEventListener("loadedmetadata", onReady);
             v.addEventListener("error", onErr);
 
-            if (playSrc.indexOf("blob:") === 0 || playSrc.indexOf("file:") === 0) {
+            if (!item.useCors || playSrc.indexOf("blob:") === 0 || playSrc.indexOf("file:") === 0) {
               v.removeAttribute("crossorigin");
             } else {
               v.crossOrigin = "anonymous";
             }
             v.muted = true;
             v.loop = true;
+            v.preload = "auto";
             v.src = playSrc;
             v.load();
           }
@@ -2486,49 +2590,42 @@
           if (onStepProgress) {
             onStepProgress(10, "Đang tìm các Video nguồn cùng chủ đề (" + themeKey.toUpperCase() + ")...");
           }
-          let bridgeSources = [];
-          try {
-            const bRes = await fetch("http://localhost:48915/fetch-online-videos?theme=" + encodeURIComponent(themeKey) + "&t=" + Date.now());
-            if (bRes.ok) {
-              const bData = await bRes.json();
-              if (bData && bData.ok && Array.isArray(bData.urls)) {
-                bridgeSources = bData.urls.map(function (u, idx) {
-                  return {
-                    parentVideoId: "CACHE_" + themeKey.toUpperCase() + "_" + (idx + 1),
-                    title: "Video Nguồn Chủ Đề #" + (idx + 1),
-                    videoUrl: u,
-                    estDuration: 36.0,
-                    channel: "StudioChannel_" + (idx + 1),
-                    source: (idx % 2 === 0) ? "YouTube" : "Pexels"
-                  };
-                });
-              }
-            }
-          } catch (eB) {}
           const webSources = await searchThemeSourceVideos(themeKey);
-          candidateSources = webSources.concat(bridgeSources);
+          candidateSources = webSources;
         }
 
         if (candidateSources.length === 0) return false;
 
-        // 2. Nạp 12 Video nguồn khác nhau vào 12 bộ giải mã #vid-pool-0..11
+        // 2. Nạp các Video nguồn vào 12 bộ giải mã #vid-pool-0..11 với giới hạn tổng thời gian chờ tối đa 14 giây (không bao giờ treo!)
         const slotCount = Math.min(12, candidateSources.length);
         let loadedCount = 0;
-        const slotPromises = [];
+        const loadedResults = new Array(slotCount).fill(null);
 
-        for (let sIdx = 0; sIdx < slotCount; sIdx++) {
-          const p = loadSourceVideoIntoSlot(sIdx, candidateSources, sIdx * 2).then(function (loadedSource) {
-            if (loadedSource) loadedCount++;
-            const pct = Math.min(92, Math.round(((sIdx + 1) / slotCount) * 80) + 12);
-            if (onStepProgress) {
-              onStepProgress(pct, "Đã nạp Video nguồn " + loadedCount + "/" + slotCount + " & đang cắt các đoạn suộc (≤ 8s)...");
+        await Promise.race([
+          (async function () {
+            for (let waveStart = 0; waveStart < slotCount; waveStart += 6) {
+              const wavePromises = [];
+              for (let sIdx = waveStart; sIdx < Math.min(slotCount, waveStart + 6); sIdx++) {
+                const p = loadSourceVideoIntoSlot(sIdx, candidateSources, sIdx * 2).then(function (loadedSource) {
+                  if (loadedSource) {
+                    loadedCount++;
+                    loadedResults[sIdx] = loadedSource;
+                  }
+                  const pct = Math.min(92, Math.round(((sIdx + 1) / slotCount) * 80) + 12);
+                  if (onStepProgress) {
+                    onStepProgress(pct, "Đã nạp Video nguồn thật " + loadedCount + "/" + slotCount + " & đang cắt các đoạn suộc (≤ 8s)...");
+                  }
+                  return loadedSource;
+                });
+                wavePromises.push(p);
+              }
+              await Promise.all(wavePromises);
             }
-            return loadedSource;
-          });
-          slotPromises.push(p);
-        }
-
-        const loadedResults = await Promise.all(slotPromises);
+          })(),
+          new Promise(function (resolveCap) {
+            setTimeout(resolveCap, 14000);
+          })
+        ]);
         const readySources = loadedResults.filter(function (x) { return x !== null; });
         if (readySources.length === 0) return false;
 
@@ -3300,10 +3397,12 @@
             }
           }
         }
+        // Tự động tối ưu Bitrate theo tổng thời lượng video (nếu video dài > 15 phút như 60 phút thì dùng 2.2 Mbps để file .MP4 mượt nhẹ ~900MB, không bao giờ tràn RAM trình duyệt!)
+        const optimalBitrate = (totalDur > 1800) ? 2200000 : ((totalDur > 600) ? 4000000 : 8000000);
         try {
           recorder = selectedMime
-            ? new MediaRecorder(fullStream, { mimeType: selectedMime, videoBitsPerSecond: 8000000 })
-            : new MediaRecorder(fullStream, { videoBitsPerSecond: 8000000 });
+            ? new MediaRecorder(fullStream, { mimeType: selectedMime, videoBitsPerSecond: optimalBitrate })
+            : new MediaRecorder(fullStream, { videoBitsPerSecond: optimalBitrate });
         } catch (err1) {
           recorder = new MediaRecorder(fullStream);
         }
@@ -3509,8 +3608,8 @@
       // =========================================================================
       const OTA_STORAGE_KEY = "auto_video_studio_4k_ota_state_v1";
       let otaState = {
-        currentVersion: "v4.5.0",
-        latestRemoteVersion: "v4.5.0",
+        currentVersion: "v4.8.0",
+        latestRemoteVersion: "v4.8.0",
         pendingReleaseNotes: "Tối ưu tốc độ dựng Audio 60 phút & tự động đồng bộ bản quyền Storyblocks/Envato",
         manifestUrl: "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/version_manifest.json",
         autoUpdateOnStartup: true,
@@ -3530,10 +3629,10 @@
             const parsed = JSON.parse(raw);
             if (parsed && parsed.currentVersion) {
               otaState = Object.assign(otaState, parsed);
-              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v4.5.0)
-              otaState.currentVersion = "v4.5.0";
-              if (otaState.latestRemoteVersion < "v4.5.0") {
-                otaState.latestRemoteVersion = "v4.5.0";
+              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v4.8.0)
+              otaState.currentVersion = "v4.8.0";
+              if (otaState.latestRemoteVersion < "v4.8.0") {
+                otaState.latestRemoteVersion = "v4.8.0";
               }
             }
           }
