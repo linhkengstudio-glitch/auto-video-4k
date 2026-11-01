@@ -3608,8 +3608,8 @@
       // =========================================================================
       const OTA_STORAGE_KEY = "auto_video_studio_4k_ota_state_v1";
       let otaState = {
-        currentVersion: "v4.8.0",
-        latestRemoteVersion: "v4.8.0",
+        currentVersion: "v4.9.0",
+        latestRemoteVersion: "v4.9.0",
         pendingReleaseNotes: "Tối ưu tốc độ dựng Audio 60 phút & tự động đồng bộ bản quyền Storyblocks/Envato",
         manifestUrl: "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/version_manifest.json",
         autoUpdateOnStartup: true,
@@ -3629,10 +3629,10 @@
             const parsed = JSON.parse(raw);
             if (parsed && parsed.currentVersion) {
               otaState = Object.assign(otaState, parsed);
-              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v4.8.0)
-              otaState.currentVersion = "v4.8.0";
-              if (otaState.latestRemoteVersion < "v4.8.0") {
-                otaState.latestRemoteVersion = "v4.8.0";
+              // Luôn cập nhật số phiên bản hiển thị theo đúng bản code mới nhất đang chạy (v4.9.0)
+              otaState.currentVersion = "v4.9.0";
+              if (otaState.latestRemoteVersion < "v4.9.0") {
+                otaState.latestRemoteVersion = "v4.9.0";
               }
             }
           }

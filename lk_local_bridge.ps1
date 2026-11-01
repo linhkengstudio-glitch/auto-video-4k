@@ -95,7 +95,7 @@ while ($listener.IsListening) {
         }
 
         if ($path -eq "/ping") {
-            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"4.8.0"}')
+            $buf = [System.Text.Encoding]::UTF8.GetBytes('{"ok":true,"version":"4.9.0"}')
             $res.ContentType = "application/json; charset=utf-8"
             $res.OutputStream.Write($buf, 0, $buf.Length)
             $res.Close()
@@ -224,7 +224,7 @@ while ($listener.IsListening) {
             $apiUrl = "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch=$encQ&gsrlimit=35&prop=videoinfo&viprop=url|size|mime|derivatives|user|dimensions&format=json"
             try {
                 $wc = New-Object System.Net.WebClient
-                $wc.Headers.Add("User-Agent", "LunKengAutoVideo4K/4.8.0 (Windows NT 10.0; Win64; x64)")
+                $wc.Headers.Add("User-Agent", "LunKengAutoVideo4K/4.9.0 (Windows NT 10.0; Win64; x64)")
                 $wc.Encoding = [System.Text.Encoding]::UTF8
                 $apiJson = $wc.DownloadString($apiUrl) | ConvertFrom-Json
                 if ($null -ne $apiJson.query -and $null -ne $apiJson.query.pages) {
@@ -253,7 +253,7 @@ while ($listener.IsListening) {
                                     $outVid = Join-Path $cacheDir ("source_v45_" + $dlIdx + $ext)
                                     $tmpVid = $outVid + ".tmp"
                                     if (-not (Test-Path -LiteralPath $outVid)) {
-                                        $proc = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s -A `"LunKengAutoVideo4K/4.8.0`" --max-time 20 `"$vidUrl`" -o `"$tmpVid`"" -WindowStyle Hidden -Wait -PassThru
+                                        $proc = Start-Process -FilePath "curl.exe" -ArgumentList "-L -f -s -A `"LunKengAutoVideo4K/4.9.0`" --max-time 20 `"$vidUrl`" -o `"$tmpVid`"" -WindowStyle Hidden -Wait -PassThru
                                         if ($proc.ExitCode -eq 0 -and (Test-Path -LiteralPath $tmpVid) -and (Get-Item -LiteralPath $tmpVid).Length -gt 50000) {
                                             Move-Item -LiteralPath $tmpVid -Destination $outVid -Force
                                         } else {

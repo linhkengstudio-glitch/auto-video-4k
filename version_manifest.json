@@ -1,14 +1,14 @@
 {
   "app_name": "LK_Auto_Edit_Video",
-  "latest_version": "v4.8.0",
-  "released_at": "2026-11-01T07:40:00Z",
-  "release_notes": "Bản v4.8.0: Khởi tạo Profile trình duyệt sạch mới (AppProfile_v48) để xóa bỏ hoàn toàn thư mục Cache 1-Byte bị kẹt từ bản cũ (vẫn tự động di chuyển và lưu vĩnh viễn 527 suộc Bộ Nhớ Hệ Thống xuống ổ cứng), kết hợp nạp luồng Video thật có xác thực CORS origin-clean đảm bảo captureStream(30) không bao giờ lỗi.",
+  "latest_version": "v4.9.0",
+  "released_at": "2026-11-01T07:53:00Z",
+  "release_notes": "Bản v4.9.0: Gỡ bỏ hoàn toàn lệnh wsh.Run(..., true) chờ PowerShell làm treo cửa sổ cài đặt HTA ở mức 100%; nhúng trực tiếp auto_video_editor.html vào trong HTA để mở cửa sổ chính ngay lập tức sau 0.8 giây kể cả khi nhấp đúp trực tiếp từ trong WinRAR.",
   "preserve_system_clip_memory": true,
   "files": [
     {
       "path": "auto_video_editor.html",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/auto_video_editor.html",
-      "sha256": "466cec415e5312115f80eda34d24b8b75cc82a5dd257e4a27f460dd24b2c4fd4"
+      "sha256": "f007a7f427787a44e20a1cc8c785633fce379b98093579da8155685fe6eaca0f"
     },
     {
       "path": "Lun_Keng_4K_Logo.ico",
@@ -18,12 +18,12 @@
     {
       "path": "LK_Auto_Edit_Video.hta",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/LK_Auto_Edit_Video.hta",
-      "sha256": "46aa2d59ffc6aae3cb82de3c736d7ce8392c4917a652451e28886024667f4c19"
+      "sha256": "77df74efca45577f45bc51f8890ed0abb483853bb5d03b0aef3a9dfed320e9a2"
     },
     {
       "path": "lk_local_bridge.ps1",
       "url": "https://raw.githubusercontent.com/linhkengstudio-glitch/auto-video-4k/main/lk_local_bridge.ps1",
-      "sha256": "0ea1214bebe8074796a4b0dfe90b5d2a7c03cdd3b3bd7cd6c6b7bf7195444e66"
+      "sha256": "50d958929d96d975d63974f8afff3b5a633611bafeecefa7ed305c0174a82349"
     }
   ]
 }
